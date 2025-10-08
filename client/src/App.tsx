@@ -17,6 +17,14 @@ import Salaries from "@/pages/salaries";
 import Stock from "@/pages/stock";
 import AuditReports from "@/pages/audit-reports";
 import Permissions from "@/pages/permissions";
+import LeaveManagement from "@/pages/leave-management";
+import Attendance from "@/pages/attendance";
+import PerformanceReviews from "@/pages/performance-reviews";
+import EmployeeDocuments from "@/pages/employee-documents";
+import OrgChart from "@/pages/org-chart";
+import Benefits from "@/pages/benefits";
+import Training from "@/pages/training";
+import ExitManagement from "@/pages/exit-management";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -32,6 +40,14 @@ function Router() {
       <Route path="/stock" component={Stock} />
       <Route path="/audit-reports" component={AuditReports} />
       <Route path="/permissions" component={Permissions} />
+      <Route path="/leave-management" component={LeaveManagement} />
+      <Route path="/attendance" component={Attendance} />
+      <Route path="/performance-reviews" component={PerformanceReviews} />
+      <Route path="/employee-documents" component={EmployeeDocuments} />
+      <Route path="/org-chart" component={OrgChart} />
+      <Route path="/benefits" component={Benefits} />
+      <Route path="/training" component={Training} />
+      <Route path="/exit-management" component={ExitManagement} />
       <Route component={NotFound} />
     </Switch>
   );
