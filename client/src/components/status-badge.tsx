@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 
 interface StatusBadgeProps {
-  status: "paid" | "pending" | "overdue" | "approved" | "rejected" | "draft" | "active" | "inactive" | "low" | "in-stock" | "out-of-stock";
+  status: "paid" | "pending" | "overdue" | "approved" | "rejected" | "draft" | "active" | "inactive" | "low" | "in-stock" | "out-of-stock" | "sent" | "converted" | "expired";
   className?: string;
 }
 
@@ -18,6 +18,9 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
     low: { label: "Low Stock", className: "bg-chart-4/20 text-chart-4 border-chart-4/30" },
     "in-stock": { label: "In Stock", className: "bg-chart-2/20 text-chart-2 border-chart-2/30" },
     "out-of-stock": { label: "Out of Stock", className: "bg-destructive/20 text-destructive border-destructive/30" },
+    sent: { label: "Sent", className: "bg-chart-1/20 text-chart-1 border-chart-1/30" },
+    converted: { label: "Converted", className: "bg-chart-2/20 text-chart-2 border-chart-2/30" },
+    expired: { label: "Expired", className: "bg-destructive/20 text-destructive border-destructive/30" },
   };
 
   const { label, className: variantClass } = variants[status];
