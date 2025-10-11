@@ -61,6 +61,7 @@ const invoiceFormSchema = insertInvoiceSchema.omit({ items: true, subtotal: true
     quantity: z.number().min(1, "Quantity must be at least 1"),
     rate: z.number().min(0, "Rate must be positive"),
   })).min(1, "At least one line item is required"),
+  taxRateId: z.number().optional(),
 });
 
 type InvoiceFormData = z.infer<typeof invoiceFormSchema>;
@@ -97,6 +98,7 @@ export default function Invoices() {
       status: "pending",
       notes: "",
       lineItems: [{ description: "", quantity: 1, rate: 0 }],
+      taxRateId: undefined,
     },
   });
 
@@ -115,15 +117,25 @@ export default function Invoices() {
   }, [isDialogOpen, editingInvoice, form]);
 
   const lineItems = form.watch("lineItems") || [];
+  const selectedTaxRateId = form.watch("taxRateId");
 
   const calculateTotals = () => {
     const subtotal = lineItems.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
-    const tax = subtotal * 0.1; // 10% tax
+    let taxPercentage = 0;
+    
+    if (selectedTaxRateId) {
+      const selectedTaxRate = taxRates.find(t => t.id === selectedTaxRateId);
+      if (selectedTaxRate) {
+        taxPercentage = parseFloat(selectedTaxRate.percentage) / 100;
+      }
+    }
+    
+    const tax = subtotal * taxPercentage;
     const total = subtotal + tax;
-    return { subtotal, tax, total };
+    return { subtotal, tax, total, taxPercentage: taxPercentage * 100 };
   };
 
-  const { subtotal, tax, total } = calculateTotals();
+  const { subtotal, tax, total, taxPercentage } = calculateTotals();
 
   const createMutation = useMutation({
     mutationFn: (data: typeof insertInvoiceSchema._type) => apiRequest("/api/invoices", "POST", data),
@@ -210,6 +222,7 @@ export default function Invoices() {
       status: invoice.status,
       notes: invoice.notes || "",
       lineItems: parsedItems,
+      taxRateId: (invoice as any).taxRateId ?? undefined,
     });
     setIsDialogOpen(true);
   };
@@ -436,6 +449,41 @@ export default function Invoices() {
                   />
                 </div>
 
+                <FormField
+                  control={form.control}
+                  name="taxRateId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tax Rate</FormLabel>
+                      <Select 
+                        onValueChange={(value) => {
+                          if (value === "none") {
+                            field.onChange(undefined);
+                          } else {
+                            field.onChange(parseInt(value));
+                          }
+                        }} 
+                        value={field.value?.toString() || "none"}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="select-tax-rate">
+                            <SelectValue placeholder="Select tax rate (optional)" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">No Tax</SelectItem>
+                          {taxRates.map((taxRate) => (
+                            <SelectItem key={taxRate.id} value={taxRate.id.toString()}>
+                              {taxRate.name} ({taxRate.percentage}%)
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <div className="border rounded-lg p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <h3 className="font-semibold">Line Items</h3>
@@ -526,7 +574,7 @@ export default function Invoices() {
                       <span className="font-medium">${subtotal.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span>Tax (10%):</span>
+                      <span>Tax {taxPercentage > 0 ? `(${taxPercentage}%)` : ''}:</span>
                       <span className="font-medium">${tax.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-lg font-bold">
@@ -536,19 +584,55 @@ export default function Invoices() {
                   </div>
                 </div>
 
-                <FormField
-                  control={form.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Notes</FormLabel>
-                      <FormControl>
-                        <Input {...field} value={field.value || ""} placeholder="Additional notes..." data-testid="input-invoice-notes" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+                <div className="space-y-2">
+                  <FormLabel>Notes</FormLabel>
+                  {invoiceNotes.length > 0 ? (
+                    <Select
+                      onValueChange={(value) => {
+                        const selectedNote = invoiceNotes.find(n => n.id.toString() === value);
+                        if (selectedNote) {
+                          form.setValue("notes", selectedNote.content);
+                        }
+                      }}
+                    >
+                      <SelectTrigger data-testid="select-invoice-notes">
+                        <SelectValue placeholder="Select a note template or type custom note below" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {invoiceNotes.map((note) => (
+                          <SelectItem key={note.id} value={note.id.toString()}>
+                            {note.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="flex items-center gap-2 p-2 border rounded-md bg-muted">
+                      <p className="text-sm text-muted-foreground flex-1">No note templates available</p>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => window.open('/settings', '_blank')}
+                        data-testid="button-create-note-template"
+                      >
+                        Create Template
+                      </Button>
+                    </div>
                   )}
-                />
+                  <FormField
+                    control={form.control}
+                    name="notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Textarea {...field} value={field.value || ""} placeholder="Type custom notes or select a template above..." rows={3} data-testid="input-invoice-notes" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={() => handleDialogClose(false)}>
