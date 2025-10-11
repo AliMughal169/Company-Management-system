@@ -7,6 +7,8 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { useAuth } from "@/hooks/useAuth";
+import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import Invoices from "@/pages/invoices";
 import ProformaInvoices from "@/pages/proforma-invoices";
@@ -26,6 +28,17 @@ import Training from "@/pages/training";
 import ExitManagement from "@/pages/exit";
 import Settings from "@/pages/settings";
 import NotFound from "@/pages/not-found";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { User as UserIcon, LogOut } from "lucide-react";
 
 function Router() {
   return (
@@ -53,6 +66,52 @@ function Router() {
   );
 }
 
+function UserProfile() {
+  const { user } = useAuth();
+
+  if (!user) return null;
+
+  const getInitials = () => {
+    if (user.firstName && user.lastName) {
+      return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
+    }
+    if (user.email) {
+      return user.email[0].toUpperCase();
+    }
+    return "U";
+  };
+
+  const displayName = user.firstName && user.lastName
+    ? `${user.firstName} ${user.lastName}`
+    : user.email || "User";
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="rounded-full" data-testid="button-user-menu">
+          <Avatar>
+            <AvatarImage src={user.profileImageUrl || undefined} alt={displayName} />
+            <AvatarFallback>{getInitials()}</AvatarFallback>
+          </Avatar>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuLabel>
+          <div className="flex flex-col">
+            <span className="font-medium">{displayName}</span>
+            {user.email && <span className="text-xs text-muted-foreground">{user.email}</span>}
+          </div>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => window.location.href = "/api/logout"} data-testid="button-logout">
+          <LogOut className="mr-2 h-4 w-4" />
+          Log Out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 function App() {
   const style = {
     "--sidebar-width": "16rem",
@@ -63,24 +122,39 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="dark">
         <TooltipProvider>
-          <SidebarProvider style={style as React.CSSProperties}>
-            <div className="flex h-screen w-full">
-              <AppSidebar />
-              <div className="flex flex-col flex-1 overflow-hidden">
-                <header className="flex items-center justify-between gap-4 p-4 border-b border-border">
-                  <SidebarTrigger data-testid="button-sidebar-toggle" />
-                  <ThemeToggle />
-                </header>
-                <main className="flex-1 overflow-auto p-8">
-                  <Router />
-                </main>
-              </div>
-            </div>
-          </SidebarProvider>
+          <AppContent style={style} />
           <Toaster />
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>
+  );
+}
+
+function AppContent({ style }: { style: { [key: string]: string } }) {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading || !isAuthenticated) {
+    return <Landing />;
+  }
+
+  return (
+    <SidebarProvider style={style as React.CSSProperties}>
+      <div className="flex h-screen w-full">
+        <AppSidebar />
+        <div className="flex flex-col flex-1 overflow-hidden">
+          <header className="flex items-center justify-between gap-4 p-4 border-b border-border">
+            <SidebarTrigger data-testid="button-sidebar-toggle" />
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              <UserProfile />
+            </div>
+          </header>
+          <main className="flex-1 overflow-auto p-8">
+            <Router />
+          </main>
+        </div>
+      </div>
+    </SidebarProvider>
   );
 }
 

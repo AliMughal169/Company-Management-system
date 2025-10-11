@@ -22,16 +22,35 @@ import {
   idSequences, insertIdSequenceSchema
 } from "@shared/schema";
 import { eq } from "drizzle-orm";
+import { setupAuth, isAuthenticated } from "./replitAuth";
+import { storage } from "./storage";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
+  // ========== AUTH SETUP ==========
+  await setupAuth(app);
+
+  // ========== AUTH ROUTES ==========
+  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // ========== PROTECTED ROUTES (All routes below require authentication) ==========
+  
   // ========== CUSTOMERS ==========
-  app.get("/api/customers", async (req, res) => {
+  app.get("/api/customers", isAuthenticated, async (req, res) => {
     const allCustomers = await db.select().from(customers);
     res.json(allCustomers);
   });
 
-  app.post("/api/customers", async (req, res) => {
+  app.post("/api/customers", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertCustomerSchema.parse(req.body);
       const [newCustomer] = await db.insert(customers).values(validatedData).returning();
@@ -41,7 +60,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/customers/:id", async (req, res) => {
+  app.patch("/api/customers/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const validatedData = insertCustomerSchema.partial().parse(req.body);
@@ -52,7 +71,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/customers/:id", async (req, res) => {
+  app.delete("/api/customers/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       await db.delete(customers).where(eq(customers.id, id));
@@ -63,12 +82,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ========== SALES INVOICES ==========
-  app.get("/api/invoices", async (req, res) => {
+  app.get("/api/invoices", isAuthenticated, async (req, res) => {
     const allInvoices = await db.select().from(invoices);
     res.json(allInvoices);
   });
 
-  app.post("/api/invoices", async (req, res) => {
+  app.post("/api/invoices", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertInvoiceSchema.parse(req.body);
       const [newInvoice] = await db.insert(invoices).values(validatedData).returning();
@@ -78,7 +97,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/invoices/:id", async (req, res) => {
+  app.patch("/api/invoices/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const validatedData = insertInvoiceSchema.partial().parse(req.body);
@@ -89,7 +108,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/invoices/:id", async (req, res) => {
+  app.delete("/api/invoices/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       await db.delete(invoices).where(eq(invoices.id, id));
@@ -100,12 +119,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ========== PROFORMA INVOICES ==========
-  app.get("/api/proforma-invoices", async (req, res) => {
+  app.get("/api/proforma-invoices", isAuthenticated, async (req, res) => {
     const allProformaInvoices = await db.select().from(proformaInvoices);
     res.json(allProformaInvoices);
   });
 
-  app.post("/api/proforma-invoices", async (req, res) => {
+  app.post("/api/proforma-invoices", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertProformaInvoiceSchema.parse(req.body);
       const [newProforma] = await db.insert(proformaInvoices).values(validatedData).returning();
@@ -115,7 +134,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/proforma-invoices/:id", async (req, res) => {
+  app.patch("/api/proforma-invoices/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const validatedData = insertProformaInvoiceSchema.partial().parse(req.body);
@@ -126,7 +145,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/proforma-invoices/:id", async (req, res) => {
+  app.delete("/api/proforma-invoices/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       await db.delete(proformaInvoices).where(eq(proformaInvoices.id, id));
@@ -137,12 +156,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ========== EXPENSES ==========
-  app.get("/api/expenses", async (req, res) => {
+  app.get("/api/expenses", isAuthenticated, async (req, res) => {
     const allExpenses = await db.select().from(expenses);
     res.json(allExpenses);
   });
 
-  app.post("/api/expenses", async (req, res) => {
+  app.post("/api/expenses", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertExpenseSchema.parse(req.body);
       const [newExpense] = await db.insert(expenses).values(validatedData).returning();
@@ -152,7 +171,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/expenses/:id", async (req, res) => {
+  app.patch("/api/expenses/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const validatedData = insertExpenseSchema.partial().parse(req.body);
@@ -163,7 +182,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/expenses/:id", async (req, res) => {
+  app.delete("/api/expenses/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       await db.delete(expenses).where(eq(expenses.id, id));
@@ -174,12 +193,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ========== EMPLOYEES ==========
-  app.get("/api/employees", async (req, res) => {
+  app.get("/api/employees", isAuthenticated, async (req, res) => {
     const allEmployees = await db.select().from(employees);
     res.json(allEmployees);
   });
 
-  app.post("/api/employees", async (req, res) => {
+  app.post("/api/employees", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertEmployeeSchema.parse(req.body);
       const [newEmployee] = await db.insert(employees).values(validatedData).returning();
@@ -189,7 +208,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/employees/:id", async (req, res) => {
+  app.patch("/api/employees/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const validatedData = insertEmployeeSchema.partial().parse(req.body);
@@ -200,7 +219,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/employees/:id", async (req, res) => {
+  app.delete("/api/employees/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       await db.delete(employees).where(eq(employees.id, id));
@@ -211,12 +230,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ========== STOCK ==========
-  app.get("/api/stock", async (req, res) => {
+  app.get("/api/stock", isAuthenticated, async (req, res) => {
     const allStock = await db.select().from(stock);
     res.json(allStock);
   });
 
-  app.post("/api/stock", async (req, res) => {
+  app.post("/api/stock", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertStockSchema.parse(req.body);
       const [newStock] = await db.insert(stock).values(validatedData).returning();
@@ -226,7 +245,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/stock/:id", async (req, res) => {
+  app.patch("/api/stock/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const validatedData = insertStockSchema.partial().parse(req.body);
@@ -237,7 +256,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/stock/:id", async (req, res) => {
+  app.delete("/api/stock/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       await db.delete(stock).where(eq(stock.id, id));
@@ -248,12 +267,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ========== SALARIES ==========
-  app.get("/api/salaries", async (req, res) => {
+  app.get("/api/salaries", isAuthenticated, async (req, res) => {
     const allSalaries = await db.select().from(salaries);
     res.json(allSalaries);
   });
 
-  app.post("/api/salaries", async (req, res) => {
+  app.post("/api/salaries", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertSalarySchema.parse(req.body);
       const [newSalary] = await db.insert(salaries).values(validatedData).returning();
@@ -263,7 +282,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/salaries/:id", async (req, res) => {
+  app.patch("/api/salaries/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const validatedData = insertSalarySchema.partial().parse(req.body);
@@ -274,7 +293,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/salaries/:id", async (req, res) => {
+  app.delete("/api/salaries/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       await db.delete(salaries).where(eq(salaries.id, id));
@@ -285,12 +304,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ========== LEAVE ==========
-  app.get("/api/leave", async (req, res) => {
+  app.get("/api/leave", isAuthenticated, async (req, res) => {
     const allLeave = await db.select().from(leave);
     res.json(allLeave);
   });
 
-  app.post("/api/leave", async (req, res) => {
+  app.post("/api/leave", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertLeaveSchema.parse(req.body);
       const [newLeave] = await db.insert(leave).values(validatedData).returning();
@@ -300,7 +319,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/leave/:id", async (req, res) => {
+  app.patch("/api/leave/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const validatedData = insertLeaveSchema.partial().parse(req.body);
@@ -311,7 +330,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/leave/:id", async (req, res) => {
+  app.delete("/api/leave/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       await db.delete(leave).where(eq(leave.id, id));
@@ -322,12 +341,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ========== ATTENDANCE ==========
-  app.get("/api/attendance", async (req, res) => {
+  app.get("/api/attendance", isAuthenticated, async (req, res) => {
     const allAttendance = await db.select().from(attendance);
     res.json(allAttendance);
   });
 
-  app.post("/api/attendance", async (req, res) => {
+  app.post("/api/attendance", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertAttendanceSchema.parse(req.body);
       const [newAttendance] = await db.insert(attendance).values(validatedData).returning();
@@ -337,7 +356,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/attendance/:id", async (req, res) => {
+  app.patch("/api/attendance/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const validatedData = insertAttendanceSchema.partial().parse(req.body);
@@ -348,7 +367,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/attendance/:id", async (req, res) => {
+  app.delete("/api/attendance/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       await db.delete(attendance).where(eq(attendance.id, id));
@@ -359,12 +378,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ========== PERFORMANCE ==========
-  app.get("/api/performance", async (req, res) => {
+  app.get("/api/performance", isAuthenticated, async (req, res) => {
     const allPerformance = await db.select().from(performance);
     res.json(allPerformance);
   });
 
-  app.post("/api/performance", async (req, res) => {
+  app.post("/api/performance", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertPerformanceSchema.parse(req.body);
       const [newPerformance] = await db.insert(performance).values(validatedData).returning();
@@ -374,7 +393,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/performance/:id", async (req, res) => {
+  app.patch("/api/performance/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const validatedData = insertPerformanceSchema.partial().parse(req.body);
@@ -385,7 +404,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/performance/:id", async (req, res) => {
+  app.delete("/api/performance/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       await db.delete(performance).where(eq(performance.id, id));
@@ -396,12 +415,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ========== DOCUMENTS ==========
-  app.get("/api/documents", async (req, res) => {
+  app.get("/api/documents", isAuthenticated, async (req, res) => {
     const allDocuments = await db.select().from(documents);
     res.json(allDocuments);
   });
 
-  app.post("/api/documents", async (req, res) => {
+  app.post("/api/documents", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertDocumentSchema.parse(req.body);
       const [newDocument] = await db.insert(documents).values(validatedData).returning();
@@ -411,7 +430,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/documents/:id", async (req, res) => {
+  app.patch("/api/documents/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const validatedData = insertDocumentSchema.partial().parse(req.body);
@@ -422,7 +441,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/documents/:id", async (req, res) => {
+  app.delete("/api/documents/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       await db.delete(documents).where(eq(documents.id, id));
@@ -433,12 +452,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ========== BENEFITS ==========
-  app.get("/api/benefits", async (req, res) => {
+  app.get("/api/benefits", isAuthenticated, async (req, res) => {
     const allBenefits = await db.select().from(benefits);
     res.json(allBenefits);
   });
 
-  app.post("/api/benefits", async (req, res) => {
+  app.post("/api/benefits", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertBenefitSchema.parse(req.body);
       const [newBenefit] = await db.insert(benefits).values(validatedData).returning();
@@ -448,7 +467,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/benefits/:id", async (req, res) => {
+  app.patch("/api/benefits/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const validatedData = insertBenefitSchema.partial().parse(req.body);
@@ -459,7 +478,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/benefits/:id", async (req, res) => {
+  app.delete("/api/benefits/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       await db.delete(benefits).where(eq(benefits.id, id));
@@ -470,12 +489,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ========== TRAINING ==========
-  app.get("/api/training", async (req, res) => {
+  app.get("/api/training", isAuthenticated, async (req, res) => {
     const allTraining = await db.select().from(training);
     res.json(allTraining);
   });
 
-  app.post("/api/training", async (req, res) => {
+  app.post("/api/training", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertTrainingSchema.parse(req.body);
       const [newTraining] = await db.insert(training).values(validatedData).returning();
@@ -485,7 +504,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/training/:id", async (req, res) => {
+  app.patch("/api/training/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const validatedData = insertTrainingSchema.partial().parse(req.body);
@@ -496,7 +515,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/training/:id", async (req, res) => {
+  app.delete("/api/training/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       await db.delete(training).where(eq(training.id, id));
@@ -507,12 +526,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ========== EXIT ==========
-  app.get("/api/exit", async (req, res) => {
+  app.get("/api/exit", isAuthenticated, async (req, res) => {
     const allExits = await db.select().from(exit);
     res.json(allExits);
   });
 
-  app.post("/api/exit", async (req, res) => {
+  app.post("/api/exit", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertExitSchema.parse(req.body);
       const [newExit] = await db.insert(exit).values(validatedData).returning();
@@ -522,7 +541,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/exit/:id", async (req, res) => {
+  app.patch("/api/exit/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const validatedData = insertExitSchema.partial().parse(req.body);
@@ -533,7 +552,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/exit/:id", async (req, res) => {
+  app.delete("/api/exit/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       await db.delete(exit).where(eq(exit.id, id));
@@ -544,12 +563,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ========== TAX RATES ==========
-  app.get("/api/tax-rates", async (req, res) => {
+  app.get("/api/tax-rates", isAuthenticated, async (req, res) => {
     const allTaxRates = await db.select().from(taxRates);
     res.json(allTaxRates);
   });
 
-  app.post("/api/tax-rates", async (req, res) => {
+  app.post("/api/tax-rates", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertTaxRateSchema.parse(req.body);
       const [newTaxRate] = await db.insert(taxRates).values(validatedData).returning();
@@ -559,7 +578,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/tax-rates/:id", async (req, res) => {
+  app.patch("/api/tax-rates/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const validatedData = insertTaxRateSchema.partial().parse(req.body);
@@ -570,7 +589,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/tax-rates/:id", async (req, res) => {
+  app.delete("/api/tax-rates/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       await db.delete(taxRates).where(eq(taxRates.id, id));
@@ -581,12 +600,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ========== INVOICE NOTES ==========
-  app.get("/api/invoice-notes", async (req, res) => {
+  app.get("/api/invoice-notes", isAuthenticated, async (req, res) => {
     const allNotes = await db.select().from(invoiceNotes);
     res.json(allNotes);
   });
 
-  app.post("/api/invoice-notes", async (req, res) => {
+  app.post("/api/invoice-notes", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertInvoiceNoteSchema.parse(req.body);
       const [newNote] = await db.insert(invoiceNotes).values(validatedData).returning();
@@ -596,7 +615,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/invoice-notes/:id", async (req, res) => {
+  app.patch("/api/invoice-notes/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const validatedData = insertInvoiceNoteSchema.partial().parse(req.body);
@@ -607,7 +626,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/invoice-notes/:id", async (req, res) => {
+  app.delete("/api/invoice-notes/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       await db.delete(invoiceNotes).where(eq(invoiceNotes.id, id));
@@ -618,17 +637,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ========== SETTINGS ==========
-  app.get("/api/settings", async (req, res) => {
+  app.get("/api/settings", isAuthenticated, async (req, res) => {
     const allSettings = await db.select().from(settings);
     res.json(allSettings);
   });
 
-  app.get("/api/settings/:key", async (req, res) => {
+  app.get("/api/settings/:key", isAuthenticated, async (req, res) => {
     const [setting] = await db.select().from(settings).where(eq(settings.key, req.params.key));
     res.json(setting || null);
   });
 
-  app.post("/api/settings", async (req, res) => {
+  app.post("/api/settings", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertSettingSchema.parse(req.body);
       const [newSetting] = await db.insert(settings).values(validatedData).returning();
@@ -638,7 +657,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/settings/:key", async (req, res) => {
+  app.patch("/api/settings/:key", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertSettingSchema.partial().parse(req.body);
       const [updated] = await db.update(settings).set(validatedData).where(eq(settings.key, req.params.key)).returning();
@@ -649,17 +668,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ========== ID SEQUENCES ==========
-  app.get("/api/id-sequences", async (req, res) => {
+  app.get("/api/id-sequences", isAuthenticated, async (req, res) => {
     const allSequences = await db.select().from(idSequences);
     res.json(allSequences);
   });
 
-  app.get("/api/id-sequences/:module", async (req, res) => {
+  app.get("/api/id-sequences/:module", isAuthenticated, async (req, res) => {
     const [sequence] = await db.select().from(idSequences).where(eq(idSequences.module, req.params.module));
     res.json(sequence || null);
   });
 
-  app.post("/api/id-sequences", async (req, res) => {
+  app.post("/api/id-sequences", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertIdSequenceSchema.parse(req.body);
       const [newSequence] = await db.insert(idSequences).values(validatedData).returning();
@@ -669,7 +688,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/id-sequences/:module", async (req, res) => {
+  app.patch("/api/id-sequences/:module", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertIdSequenceSchema.partial().parse(req.body);
       const [updated] = await db.update(idSequences).set(validatedData).where(eq(idSequences.module, req.params.module)).returning();
@@ -680,7 +699,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Generate next ID for a module
-  app.post("/api/id-sequences/:module/next", async (req, res) => {
+  app.post("/api/id-sequences/:module/next", isAuthenticated, async (req, res) => {
     try {
       const module = req.params.module;
       const [sequence] = await db.select().from(idSequences).where(eq(idSequences.module, module));
@@ -703,7 +722,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get next ID preview without incrementing
-  app.get("/api/id-sequences/:module/preview", async (req, res) => {
+  app.get("/api/id-sequences/:module/preview", isAuthenticated, async (req, res) => {
     try {
       const module = req.params.module;
       const [sequence] = await db.select().from(idSequences).where(eq(idSequences.module, module));
@@ -720,7 +739,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Initialize default ID sequences if they don't exist
-  app.post("/api/id-sequences/initialize", async (req, res) => {
+  app.post("/api/id-sequences/initialize", isAuthenticated, async (req, res) => {
     try {
       const defaultSequences = [
         { module: 'invoice', prefix: 'INV-', nextNumber: 1 },
