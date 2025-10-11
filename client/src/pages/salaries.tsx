@@ -225,7 +225,7 @@ export default function Salaries() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Payroll</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">${totalPayroll.toLocaleString()}</div>
+            <div className="text-3xl font-bold" data-testid="text-total-payroll">${totalPayroll.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground mt-1">This month</p>
           </CardContent>
         </Card>
@@ -234,7 +234,7 @@ export default function Salaries() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Allowances</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-chart-2">${totalAllowances.toLocaleString()}</div>
+            <div className="text-3xl font-bold text-chart-2" data-testid="text-total-allowances">${totalAllowances.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground mt-1">Housing + Transport</p>
           </CardContent>
         </Card>
@@ -243,7 +243,7 @@ export default function Salaries() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Deductions</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-destructive">${totalDeductions.toLocaleString()}</div>
+            <div className="text-3xl font-bold text-destructive" data-testid="text-total-deductions">${totalDeductions.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground mt-1">Tax + Insurance + Other</p>
           </CardContent>
         </Card>
