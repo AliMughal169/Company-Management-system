@@ -9,13 +9,13 @@ import {
   employees, insertEmployeeSchema,
   stock, insertStockSchema,
   salaries, insertSalarySchema,
-  leaveRequests, insertLeaveRequestSchema,
+  leave, insertLeaveSchema,
   attendance, insertAttendanceSchema,
-  performanceReviews, insertPerformanceReviewSchema,
-  employeeDocuments, insertEmployeeDocumentSchema,
+  performance, insertPerformanceSchema,
+  documents, insertDocumentSchema,
   benefits, insertBenefitSchema,
   training, insertTrainingSchema,
-  exitManagement, insertExitManagementSchema
+  exit, insertExitSchema
 } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
@@ -280,37 +280,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ========== LEAVE REQUESTS ==========
-  app.get("/api/leave-requests", async (req, res) => {
-    const allLeaveRequests = await db.select().from(leaveRequests);
-    res.json(allLeaveRequests);
+  // ========== LEAVE ==========
+  app.get("/api/leave", async (req, res) => {
+    const allLeave = await db.select().from(leave);
+    res.json(allLeave);
   });
 
-  app.post("/api/leave-requests", async (req, res) => {
+  app.post("/api/leave", async (req, res) => {
     try {
-      const validatedData = insertLeaveRequestSchema.parse(req.body);
-      const [newLeaveRequest] = await db.insert(leaveRequests).values(validatedData).returning();
-      res.json(newLeaveRequest);
+      const validatedData = insertLeaveSchema.parse(req.body);
+      const [newLeave] = await db.insert(leave).values(validatedData).returning();
+      res.json(newLeave);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
   });
 
-  app.patch("/api/leave-requests/:id", async (req, res) => {
+  app.patch("/api/leave/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const validatedData = insertLeaveRequestSchema.partial().parse(req.body);
-      const [updated] = await db.update(leaveRequests).set(validatedData).where(eq(leaveRequests.id, id)).returning();
+      const validatedData = insertLeaveSchema.partial().parse(req.body);
+      const [updated] = await db.update(leave).set(validatedData).where(eq(leave.id, id)).returning();
       res.json(updated);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
   });
 
-  app.delete("/api/leave-requests/:id", async (req, res) => {
+  app.delete("/api/leave/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      await db.delete(leaveRequests).where(eq(leaveRequests.id, id));
+      await db.delete(leave).where(eq(leave.id, id));
       res.json({ success: true });
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -354,74 +354,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ========== PERFORMANCE REVIEWS ==========
-  app.get("/api/performance-reviews", async (req, res) => {
-    const allReviews = await db.select().from(performanceReviews);
-    res.json(allReviews);
+  // ========== PERFORMANCE ==========
+  app.get("/api/performance", async (req, res) => {
+    const allPerformance = await db.select().from(performance);
+    res.json(allPerformance);
   });
 
-  app.post("/api/performance-reviews", async (req, res) => {
+  app.post("/api/performance", async (req, res) => {
     try {
-      const validatedData = insertPerformanceReviewSchema.parse(req.body);
-      const [newReview] = await db.insert(performanceReviews).values(validatedData).returning();
-      res.json(newReview);
+      const validatedData = insertPerformanceSchema.parse(req.body);
+      const [newPerformance] = await db.insert(performance).values(validatedData).returning();
+      res.json(newPerformance);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
   });
 
-  app.patch("/api/performance-reviews/:id", async (req, res) => {
+  app.patch("/api/performance/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const validatedData = insertPerformanceReviewSchema.partial().parse(req.body);
-      const [updated] = await db.update(performanceReviews).set(validatedData).where(eq(performanceReviews.id, id)).returning();
+      const validatedData = insertPerformanceSchema.partial().parse(req.body);
+      const [updated] = await db.update(performance).set(validatedData).where(eq(performance.id, id)).returning();
       res.json(updated);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
   });
 
-  app.delete("/api/performance-reviews/:id", async (req, res) => {
+  app.delete("/api/performance/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      await db.delete(performanceReviews).where(eq(performanceReviews.id, id));
+      await db.delete(performance).where(eq(performance.id, id));
       res.json({ success: true });
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
   });
 
-  // ========== EMPLOYEE DOCUMENTS ==========
-  app.get("/api/employee-documents", async (req, res) => {
-    const allDocuments = await db.select().from(employeeDocuments);
+  // ========== DOCUMENTS ==========
+  app.get("/api/documents", async (req, res) => {
+    const allDocuments = await db.select().from(documents);
     res.json(allDocuments);
   });
 
-  app.post("/api/employee-documents", async (req, res) => {
+  app.post("/api/documents", async (req, res) => {
     try {
-      const validatedData = insertEmployeeDocumentSchema.parse(req.body);
-      const [newDocument] = await db.insert(employeeDocuments).values(validatedData).returning();
+      const validatedData = insertDocumentSchema.parse(req.body);
+      const [newDocument] = await db.insert(documents).values(validatedData).returning();
       res.json(newDocument);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
   });
 
-  app.patch("/api/employee-documents/:id", async (req, res) => {
+  app.patch("/api/documents/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const validatedData = insertEmployeeDocumentSchema.partial().parse(req.body);
-      const [updated] = await db.update(employeeDocuments).set(validatedData).where(eq(employeeDocuments.id, id)).returning();
+      const validatedData = insertDocumentSchema.partial().parse(req.body);
+      const [updated] = await db.update(documents).set(validatedData).where(eq(documents.id, id)).returning();
       res.json(updated);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
   });
 
-  app.delete("/api/employee-documents/:id", async (req, res) => {
+  app.delete("/api/documents/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      await db.delete(employeeDocuments).where(eq(employeeDocuments.id, id));
+      await db.delete(documents).where(eq(documents.id, id));
       res.json({ success: true });
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -502,37 +502,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ========== EXIT MANAGEMENT ==========
-  app.get("/api/exit-management", async (req, res) => {
-    const allExits = await db.select().from(exitManagement);
+  // ========== EXIT ==========
+  app.get("/api/exit", async (req, res) => {
+    const allExits = await db.select().from(exit);
     res.json(allExits);
   });
 
-  app.post("/api/exit-management", async (req, res) => {
+  app.post("/api/exit", async (req, res) => {
     try {
-      const validatedData = insertExitManagementSchema.parse(req.body);
-      const [newExit] = await db.insert(exitManagement).values(validatedData).returning();
+      const validatedData = insertExitSchema.parse(req.body);
+      const [newExit] = await db.insert(exit).values(validatedData).returning();
       res.json(newExit);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
   });
 
-  app.patch("/api/exit-management/:id", async (req, res) => {
+  app.patch("/api/exit/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const validatedData = insertExitManagementSchema.partial().parse(req.body);
-      const [updated] = await db.update(exitManagement).set(validatedData).where(eq(exitManagement.id, id)).returning();
+      const validatedData = insertExitSchema.partial().parse(req.body);
+      const [updated] = await db.update(exit).set(validatedData).where(eq(exit.id, id)).returning();
       res.json(updated);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
   });
 
-  app.delete("/api/exit-management/:id", async (req, res) => {
+  app.delete("/api/exit/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      await db.delete(exitManagement).where(eq(exitManagement.id, id));
+      await db.delete(exit).where(eq(exit.id, id));
       res.json({ success: true });
     } catch (error: any) {
       res.status(400).json({ error: error.message });

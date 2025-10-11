@@ -154,16 +154,14 @@ export type Stock = typeof stock.$inferSelect;
 export const salaries = pgTable("salaries", {
   id: serial("id").primaryKey(),
   employeeId: integer("employee_id").notNull().references(() => employees.id),
-  month: text("month").notNull(), // e.g., "January 2024"
-  baseSalary: decimal("base_salary", { precision: 10, scale: 2 }).notNull(),
-  housingAllowance: decimal("housing_allowance", { precision: 10, scale: 2 }).notNull().default("0"),
-  transportAllowance: decimal("transport_allowance", { precision: 10, scale: 2 }).notNull().default("0"),
-  healthInsurance: decimal("health_insurance", { precision: 10, scale: 2 }).notNull().default("0"),
-  taxDeduction: decimal("tax_deduction", { precision: 10, scale: 2 }).notNull().default("0"),
-  otherDeductions: decimal("other_deductions", { precision: 10, scale: 2 }).notNull().default("0"),
-  netPay: decimal("net_pay", { precision: 10, scale: 2 }).notNull(),
-  status: text("status").notNull().default("pending"), // pending, paid
-  paidDate: date("paid_date"),
+  month: text("month").notNull(),
+  year: integer("year").notNull(),
+  basicSalary: decimal("basic_salary", { precision: 10, scale: 2 }).notNull(),
+  allowances: decimal("allowances", { precision: 10, scale: 2 }).notNull().default("0"),
+  deductions: decimal("deductions", { precision: 10, scale: 2 }).notNull().default("0"),
+  netSalary: decimal("net_salary", { precision: 10, scale: 2 }).notNull(),
+  status: text("status").notNull().default("pending"), // pending, paid, cancelled
+  paymentDate: date("payment_date"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -176,27 +174,24 @@ export type InsertSalary = z.infer<typeof insertSalarySchema>;
 export type Salary = typeof salaries.$inferSelect;
 
 // Leave Management
-export const leaveRequests = pgTable("leave_requests", {
+export const leave = pgTable("leave", {
   id: serial("id").primaryKey(),
   employeeId: integer("employee_id").notNull().references(() => employees.id),
-  leaveType: text("leave_type").notNull(), // Annual, Sick, Emergency, etc.
+  leaveType: text("leave_type").notNull(), // sick, vacation, personal, unpaid
   startDate: date("start_date").notNull(),
   endDate: date("end_date").notNull(),
-  days: integer("days").notNull(),
   reason: text("reason").notNull(),
   status: text("status").notNull().default("pending"), // pending, approved, rejected
-  approvedBy: text("approved_by"),
-  approvedDate: date("approved_date"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const insertLeaveRequestSchema = createInsertSchema(leaveRequests).omit({
+export const insertLeaveSchema = createInsertSchema(leave).omit({
   id: true,
   createdAt: true,
 });
 
-export type InsertLeaveRequest = z.infer<typeof insertLeaveRequestSchema>;
-export type LeaveRequest = typeof leaveRequests.$inferSelect;
+export type InsertLeave = z.infer<typeof insertLeaveSchema>;
+export type Leave = typeof leave.$inferSelect;
 
 // Attendance
 export const attendance = pgTable("attendance", {
@@ -220,59 +215,55 @@ export type InsertAttendance = z.infer<typeof insertAttendanceSchema>;
 export type Attendance = typeof attendance.$inferSelect;
 
 // Performance Reviews
-export const performanceReviews = pgTable("performance_reviews", {
+export const performance = pgTable("performance", {
   id: serial("id").primaryKey(),
   employeeId: integer("employee_id").notNull().references(() => employees.id),
-  reviewPeriod: text("review_period").notNull(),
-  reviewer: text("reviewer").notNull(),
-  overallRating: decimal("overall_rating", { precision: 2, scale: 1 }).notNull(),
+  reviewDate: date("review_date").notNull(),
+  rating: integer("rating").notNull(), // 1-5
   goals: text("goals"),
   achievements: text("achievements"),
-  areasForImprovement: text("areas_for_improvement"),
-  status: text("status").notNull().default("pending"), // pending, in_progress, completed
-  completionDate: date("completion_date"),
+  feedback: text("feedback"),
+  nextReviewDate: date("next_review_date"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const insertPerformanceReviewSchema = createInsertSchema(performanceReviews).omit({
+export const insertPerformanceSchema = createInsertSchema(performance).omit({
   id: true,
   createdAt: true,
 });
 
-export type InsertPerformanceReview = z.infer<typeof insertPerformanceReviewSchema>;
-export type PerformanceReview = typeof performanceReviews.$inferSelect;
+export type InsertPerformance = z.infer<typeof insertPerformanceSchema>;
+export type Performance = typeof performance.$inferSelect;
 
 // Employee Documents
-export const employeeDocuments = pgTable("employee_documents", {
+export const documents = pgTable("documents", {
   id: serial("id").primaryKey(),
   employeeId: integer("employee_id").notNull().references(() => employees.id),
-  documentType: text("document_type").notNull(),
-  fileName: text("file_name").notNull(),
-  fileUrl: text("file_url").notNull(),
+  documentType: text("document_type").notNull(), // contract, certificate, id_proof, other
+  documentName: text("document_name").notNull(),
   uploadDate: date("upload_date").notNull(),
   expiryDate: date("expiry_date"),
-  status: text("status").notNull().default("active"), // active, expired, archived
+  fileUrl: text("file_url").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const insertEmployeeDocumentSchema = createInsertSchema(employeeDocuments).omit({
+export const insertDocumentSchema = createInsertSchema(documents).omit({
   id: true,
   createdAt: true,
 });
 
-export type InsertEmployeeDocument = z.infer<typeof insertEmployeeDocumentSchema>;
-export type EmployeeDocument = typeof employeeDocuments.$inferSelect;
+export type InsertDocument = z.infer<typeof insertDocumentSchema>;
+export type Document = typeof documents.$inferSelect;
 
 // Benefits
 export const benefits = pgTable("benefits", {
   id: serial("id").primaryKey(),
   employeeId: integer("employee_id").notNull().references(() => employees.id),
-  healthInsurance: text("health_insurance").notNull(),
-  retirementPlan: text("retirement_plan").notNull(),
-  lifeInsurance: text("life_insurance").notNull(),
-  otherBenefits: text("other_benefits"),
-  totalValue: decimal("total_value", { precision: 10, scale: 2 }).notNull(),
-  status: text("status").notNull().default("active"), // active, inactive
+  benefitType: text("benefit_type").notNull(), // health_insurance, retirement, gym, transport, other
+  description: text("description").notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -288,14 +279,12 @@ export type Benefit = typeof benefits.$inferSelect;
 export const training = pgTable("training", {
   id: serial("id").primaryKey(),
   employeeId: integer("employee_id").notNull().references(() => employees.id),
-  courseName: text("course_name").notNull(),
-  category: text("category").notNull(),
-  provider: text("provider").notNull(),
+  trainingName: text("training_name").notNull(),
+  provider: text("provider"),
   startDate: date("start_date").notNull(),
-  endDate: date("end_date"),
-  progress: integer("progress").notNull().default(0), // 0-100
-  status: text("status").notNull().default("not_started"), // not_started, in_progress, completed
-  certificateUrl: text("certificate_url"),
+  endDate: date("end_date").notNull(),
+  status: text("status").notNull().default("scheduled"), // scheduled, ongoing, completed, cancelled
+  cost: decimal("cost", { precision: 10, scale: 2 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -308,22 +297,21 @@ export type InsertTraining = z.infer<typeof insertTrainingSchema>;
 export type Training = typeof training.$inferSelect;
 
 // Exit Management
-export const exitManagement = pgTable("exit_management", {
+export const exit = pgTable("exit", {
   id: serial("id").primaryKey(),
   employeeId: integer("employee_id").notNull().references(() => employees.id),
-  resignationDate: date("resignation_date").notNull(),
-  lastWorkingDay: date("last_working_day").notNull(),
+  exitDate: date("exit_date").notNull(),
   reason: text("reason").notNull(),
-  clearanceStatus: integer("clearance_status").notNull().default(0), // 0-100
+  exitType: text("exit_type").notNull(), // resignation, termination, retirement, other
+  feedback: text("feedback"),
   finalSettlement: decimal("final_settlement", { precision: 10, scale: 2 }),
-  status: text("status").notNull().default("pending"), // pending, in_progress, completed
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const insertExitManagementSchema = createInsertSchema(exitManagement).omit({
+export const insertExitSchema = createInsertSchema(exit).omit({
   id: true,
   createdAt: true,
 });
 
-export type InsertExitManagement = z.infer<typeof insertExitManagementSchema>;
-export type ExitManagement = typeof exitManagement.$inferSelect;
+export type InsertExit = z.infer<typeof insertExitSchema>;
+export type Exit = typeof exit.$inferSelect;

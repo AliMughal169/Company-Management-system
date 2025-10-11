@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { DataTable, Column } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Plus, Search, Pencil, Trash2 } from "lucide-react";
 import {
   Dialog,
@@ -28,7 +29,7 @@ import {
 } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertAttendanceSchema, type Attendance, type Employee, type InsertAttendance } from "@shared/schema";
+import { insertPerformanceSchema, type Performance, type Employee, type InsertPerformance } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -44,92 +45,92 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 
-const STATUSES = ["present", "absent", "late", "half_day"];
+const RATINGS = [1, 2, 3, 4, 5];
 
-export default function AttendancePage() {
+export default function PerformanceReviews() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingAttendance, setEditingAttendance] = useState<Attendance | null>(null);
+  const [editingPerformance, setEditingPerformance] = useState<Performance | null>(null);
   const { toast } = useToast();
 
-  const { data: attendances = [], isLoading } = useQuery<Attendance[]>({
-    queryKey: ["/api/attendance"],
+  const { data: performances = [], isLoading } = useQuery<Performance[]>({
+    queryKey: ["/api/performance"],
   });
 
   const { data: employees = [] } = useQuery<Employee[]>({
     queryKey: ["/api/employees"],
   });
 
-  const form = useForm<InsertAttendance>({
-    resolver: zodResolver(insertAttendanceSchema),
+  const form = useForm<InsertPerformance>({
+    resolver: zodResolver(insertPerformanceSchema),
     defaultValues: {
       employeeId: 0,
-      date: "",
-      checkIn: "",
-      checkOut: "",
-      workHours: "",
-      overtime: "0h",
-      status: "present",
+      reviewDate: "",
+      rating: 3,
+      goals: "",
+      achievements: "",
+      feedback: "",
+      nextReviewDate: null,
     },
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: InsertAttendance) => apiRequest("/api/attendance", "POST", data),
+    mutationFn: (data: InsertPerformance) => apiRequest("/api/performance", "POST", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/performance"] });
       setIsDialogOpen(false);
       form.reset();
-      toast({ title: "Attendance created successfully" });
+      toast({ title: "Performance review created successfully" });
     },
     onError: (error: any) => {
-      toast({ title: "Error creating attendance", description: error.message, variant: "destructive" });
+      toast({ title: "Error creating performance review", description: error.message, variant: "destructive" });
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<InsertAttendance> }) =>
-      apiRequest(`/api/attendance/${id}`, "PATCH", data),
+    mutationFn: ({ id, data }: { id: number; data: Partial<InsertPerformance> }) =>
+      apiRequest(`/api/performance/${id}`, "PATCH", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/performance"] });
       setIsDialogOpen(false);
-      setEditingAttendance(null);
+      setEditingPerformance(null);
       form.reset();
-      toast({ title: "Attendance updated successfully" });
+      toast({ title: "Performance review updated successfully" });
     },
     onError: (error: any) => {
-      toast({ title: "Error updating attendance", description: error.message, variant: "destructive" });
+      toast({ title: "Error updating performance review", description: error.message, variant: "destructive" });
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => apiRequest(`/api/attendance/${id}`, "DELETE"),
+    mutationFn: (id: number) => apiRequest(`/api/performance/${id}`, "DELETE"),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
-      toast({ title: "Attendance deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/performance"] });
+      toast({ title: "Performance review deleted successfully" });
     },
     onError: (error: any) => {
-      toast({ title: "Error deleting attendance", description: error.message, variant: "destructive" });
+      toast({ title: "Error deleting performance review", description: error.message, variant: "destructive" });
     },
   });
 
-  const onSubmit = (data: InsertAttendance) => {
-    if (editingAttendance) {
-      updateMutation.mutate({ id: editingAttendance.id, data });
+  const onSubmit = (data: InsertPerformance) => {
+    if (editingPerformance) {
+      updateMutation.mutate({ id: editingPerformance.id, data });
     } else {
       createMutation.mutate(data);
     }
   };
 
-  const handleEdit = (attendance: Attendance) => {
-    setEditingAttendance(attendance);
+  const handleEdit = (performance: Performance) => {
+    setEditingPerformance(performance);
     form.reset({
-      employeeId: attendance.employeeId,
-      date: attendance.date,
-      checkIn: attendance.checkIn || "",
-      checkOut: attendance.checkOut || "",
-      workHours: attendance.workHours || "",
-      overtime: attendance.overtime || "0h",
-      status: attendance.status,
+      employeeId: performance.employeeId,
+      reviewDate: performance.reviewDate,
+      rating: performance.rating,
+      goals: performance.goals || "",
+      achievements: performance.achievements || "",
+      feedback: performance.feedback || "",
+      nextReviewDate: performance.nextReviewDate || null,
     });
     setIsDialogOpen(true);
   };
@@ -140,7 +141,7 @@ export default function AttendancePage() {
 
   const handleDialogClose = () => {
     setIsDialogOpen(false);
-    setEditingAttendance(null);
+    setEditingPerformance(null);
     form.reset();
   };
 
@@ -149,47 +150,31 @@ export default function AttendancePage() {
     return employee?.name || "Unknown";
   };
 
-  const filteredAttendances = attendances.filter((attendance) => {
-    const employeeName = getEmployeeName(attendance.employeeId);
+  const filteredPerformances = performances.filter((performance) => {
+    const employeeName = getEmployeeName(performance.employeeId);
     return employeeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      attendance.date.toLowerCase().includes(searchQuery.toLowerCase());
+      performance.reviewDate.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
-  const getStatusBadge = (status: string) => {
-    const variants: { [key: string]: "default" | "secondary" | "destructive" } = {
-      present: "default",
-      absent: "destructive",
-      late: "secondary",
-      half_day: "secondary",
-    };
-    return (
-      <Badge variant={variants[status] || "default"}>
-        {status.replace("_", " ")}
-      </Badge>
-    );
-  };
-
-  const columns: Column<Attendance>[] = [
+  const columns: Column<Performance>[] = [
     {
       header: "Employee",
       accessor: (row) => getEmployeeName(row.employeeId),
       className: "font-medium",
     },
     {
-      header: "Date",
-      accessor: "date",
+      header: "Review Date",
+      accessor: "reviewDate",
     },
     {
-      header: "Check In",
-      accessor: (row) => row.checkIn || "N/A",
+      header: "Rating",
+      accessor: (row) => (
+        <Badge variant="default">{row.rating}/5</Badge>
+      ),
     },
     {
-      header: "Check Out",
-      accessor: (row) => row.checkOut || "N/A",
-    },
-    {
-      header: "Status",
-      accessor: (row) => getStatusBadge(row.status),
+      header: "Next Review",
+      accessor: (row) => row.nextReviewDate || "N/A",
     },
     {
       header: "Actions",
@@ -202,7 +187,7 @@ export default function AttendancePage() {
               e.stopPropagation();
               handleEdit(row);
             }}
-            data-testid={`button-edit-attendance-${row.id}`}
+            data-testid={`button-edit-performance-${row.id}`}
           >
             <Pencil className="h-4 w-4" />
           </Button>
@@ -212,16 +197,16 @@ export default function AttendancePage() {
                 variant="ghost"
                 size="icon"
                 onClick={(e) => e.stopPropagation()}
-                data-testid={`button-delete-attendance-${row.id}`}
+                data-testid={`button-delete-performance-${row.id}`}
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Delete Attendance?</AlertDialogTitle>
+                <AlertDialogTitle>Delete Performance Review?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will permanently delete this attendance record. This action cannot be undone.
+                  This will permanently delete this performance review. This action cannot be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -248,21 +233,21 @@ export default function AttendancePage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Attendance</h1>
+          <h1 className="text-3xl font-bold">Performance Reviews</h1>
           <p className="text-muted-foreground mt-1">
-            Manage employee attendance records
+            Manage employee performance reviews
           </p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
           <DialogTrigger asChild>
-            <Button data-testid="button-add-attendance">
+            <Button data-testid="button-add-performance">
               <Plus className="h-4 w-4 mr-2" />
-              Add Attendance
+              Add Review
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{editingAttendance ? "Edit Attendance" : "Add New Attendance"}</DialogTitle>
+              <DialogTitle>{editingPerformance ? "Edit Performance Review" : "Add New Performance Review"}</DialogTitle>
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -297,12 +282,12 @@ export default function AttendancePage() {
 
                   <FormField
                     control={form.control}
-                    name="date"
+                    name="reviewDate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Date *</FormLabel>
+                        <FormLabel>Review Date *</FormLabel>
                         <FormControl>
-                          <Input type="date" {...field} data-testid="input-date" />
+                          <Input type="date" {...field} data-testid="input-review-date" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -311,48 +296,23 @@ export default function AttendancePage() {
 
                   <FormField
                     control={form.control}
-                    name="checkIn"
+                    name="rating"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Check In</FormLabel>
-                        <FormControl>
-                          <Input type="time" value={field.value || ""} onChange={field.onChange} data-testid="input-check-in" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="checkOut"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Check Out</FormLabel>
-                        <FormControl>
-                          <Input type="time" value={field.value || ""} onChange={field.onChange} data-testid="input-check-out" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="status"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Status *</FormLabel>
-                        <Select value={field.value} onValueChange={field.onChange}>
+                        <FormLabel>Rating *</FormLabel>
+                        <Select
+                          value={field.value?.toString()}
+                          onValueChange={(value) => field.onChange(parseInt(value))}
+                        >
                           <FormControl>
-                            <SelectTrigger data-testid="select-status">
-                              <SelectValue placeholder="Select status" />
+                            <SelectTrigger data-testid="select-rating">
+                              <SelectValue placeholder="Select rating" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {STATUSES.map((status) => (
-                              <SelectItem key={status} value={status}>
-                                {status.replace("_", " ")}
+                            {RATINGS.map((rating) => (
+                              <SelectItem key={rating} value={rating.toString()}>
+                                {rating} Stars
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -361,14 +321,75 @@ export default function AttendancePage() {
                       </FormItem>
                     )}
                   />
+
+                  <FormField
+                    control={form.control}
+                    name="nextReviewDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Next Review Date</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="date"
+                            value={field.value || ""}
+                            onChange={field.onChange}
+                            data-testid="input-next-review-date"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
+
+                <FormField
+                  control={form.control}
+                  name="goals"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Goals</FormLabel>
+                      <FormControl>
+                        <Textarea value={field.value || ""} onChange={field.onChange} placeholder="Enter goals" data-testid="input-goals" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="achievements"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Achievements</FormLabel>
+                      <FormControl>
+                        <Textarea value={field.value || ""} onChange={field.onChange} placeholder="Enter achievements" data-testid="input-achievements" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="feedback"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Feedback</FormLabel>
+                      <FormControl>
+                        <Textarea value={field.value || ""} onChange={field.onChange} placeholder="Enter feedback" data-testid="input-feedback" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <div className="flex justify-end gap-2">
                   <Button type="button" variant="outline" onClick={handleDialogClose}>
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} data-testid="button-submit-attendance">
-                    {createMutation.isPending || updateMutation.isPending ? "Saving..." : editingAttendance ? "Update" : "Create"}
+                  <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} data-testid="button-submit-performance">
+                    {createMutation.isPending || updateMutation.isPending ? "Saving..." : editingPerformance ? "Update" : "Create"}
                   </Button>
                 </div>
               </form>
@@ -381,17 +402,17 @@ export default function AttendancePage() {
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search attendance..."
+            placeholder="Search performance reviews..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
-            data-testid="input-search-attendance"
+            data-testid="input-search-performance"
           />
         </div>
       </div>
 
       <DataTable
-        data={filteredAttendances}
+        data={filteredPerformances}
         columns={columns}
         onRowClick={() => {}}
         currentPage={1}

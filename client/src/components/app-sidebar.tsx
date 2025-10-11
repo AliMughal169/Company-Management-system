@@ -47,18 +47,17 @@ const mainMenuItems = [
 
 const hrMenuItems = [
   { title: "Employees", url: "/employees", icon: UserCog },
-  { title: "Leave Management", url: "/leave-management", icon: Calendar },
+  { title: "Leave Management", url: "/leave", icon: Calendar },
   { title: "Attendance", url: "/attendance", icon: Clock },
-  { title: "Performance Reviews", url: "/performance-reviews", icon: Star },
-  { title: "Employee Documents", url: "/employee-documents", icon: FileSpreadsheet },
-  { title: "Organization Chart", url: "/org-chart", icon: Network },
+  { title: "Performance Reviews", url: "/performance", icon: Star },
+  { title: "Employee Documents", url: "/documents", icon: FileSpreadsheet },
 ];
 
 const payrollMenuItems = [
   { title: "Salaries & Payroll", url: "/salaries", icon: DollarSign },
   { title: "Benefits", url: "/benefits", icon: Heart },
   { title: "Training", url: "/training", icon: GraduationCap },
-  { title: "Exit Management", url: "/exit-management", icon: LogOut },
+  { title: "Exit Management", url: "/exit", icon: LogOut },
 ];
 
 const systemMenuItems = [

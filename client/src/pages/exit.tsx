@@ -3,7 +3,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { DataTable, Column } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Pencil, Trash2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Plus, Search, Pencil, Trash2, DollarSign } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -28,7 +29,7 @@ import {
 } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertAttendanceSchema, type Attendance, type Employee, type InsertAttendance } from "@shared/schema";
+import { insertExitSchema, type Exit, type Employee, type InsertExit } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -44,92 +45,90 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 
-const STATUSES = ["present", "absent", "late", "half_day"];
+const EXIT_TYPES = ["resignation", "termination", "retirement", "other"];
 
-export default function AttendancePage() {
+export default function ExitManagement() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingAttendance, setEditingAttendance] = useState<Attendance | null>(null);
+  const [editingExit, setEditingExit] = useState<Exit | null>(null);
   const { toast } = useToast();
 
-  const { data: attendances = [], isLoading } = useQuery<Attendance[]>({
-    queryKey: ["/api/attendance"],
+  const { data: exits = [], isLoading } = useQuery<Exit[]>({
+    queryKey: ["/api/exit"],
   });
 
   const { data: employees = [] } = useQuery<Employee[]>({
     queryKey: ["/api/employees"],
   });
 
-  const form = useForm<InsertAttendance>({
-    resolver: zodResolver(insertAttendanceSchema),
+  const form = useForm<InsertExit>({
+    resolver: zodResolver(insertExitSchema),
     defaultValues: {
       employeeId: 0,
-      date: "",
-      checkIn: "",
-      checkOut: "",
-      workHours: "",
-      overtime: "0h",
-      status: "present",
+      exitDate: "",
+      reason: "",
+      exitType: "",
+      feedback: "",
+      finalSettlement: null,
     },
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: InsertAttendance) => apiRequest("/api/attendance", "POST", data),
+    mutationFn: (data: InsertExit) => apiRequest("/api/exit", "POST", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/exit"] });
       setIsDialogOpen(false);
       form.reset();
-      toast({ title: "Attendance created successfully" });
+      toast({ title: "Exit record created successfully" });
     },
     onError: (error: any) => {
-      toast({ title: "Error creating attendance", description: error.message, variant: "destructive" });
+      toast({ title: "Error creating exit record", description: error.message, variant: "destructive" });
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<InsertAttendance> }) =>
-      apiRequest(`/api/attendance/${id}`, "PATCH", data),
+    mutationFn: ({ id, data }: { id: number; data: Partial<InsertExit> }) =>
+      apiRequest(`/api/exit/${id}`, "PATCH", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/exit"] });
       setIsDialogOpen(false);
-      setEditingAttendance(null);
+      setEditingExit(null);
       form.reset();
-      toast({ title: "Attendance updated successfully" });
+      toast({ title: "Exit record updated successfully" });
     },
     onError: (error: any) => {
-      toast({ title: "Error updating attendance", description: error.message, variant: "destructive" });
+      toast({ title: "Error updating exit record", description: error.message, variant: "destructive" });
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => apiRequest(`/api/attendance/${id}`, "DELETE"),
+    mutationFn: (id: number) => apiRequest(`/api/exit/${id}`, "DELETE"),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
-      toast({ title: "Attendance deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/exit"] });
+      toast({ title: "Exit record deleted successfully" });
     },
     onError: (error: any) => {
-      toast({ title: "Error deleting attendance", description: error.message, variant: "destructive" });
+      toast({ title: "Error deleting exit record", description: error.message, variant: "destructive" });
     },
   });
 
-  const onSubmit = (data: InsertAttendance) => {
-    if (editingAttendance) {
-      updateMutation.mutate({ id: editingAttendance.id, data });
+  const onSubmit = (data: InsertExit) => {
+    if (editingExit) {
+      updateMutation.mutate({ id: editingExit.id, data });
     } else {
       createMutation.mutate(data);
     }
   };
 
-  const handleEdit = (attendance: Attendance) => {
-    setEditingAttendance(attendance);
+  const handleEdit = (exit: Exit) => {
+    setEditingExit(exit);
     form.reset({
-      employeeId: attendance.employeeId,
-      date: attendance.date,
-      checkIn: attendance.checkIn || "",
-      checkOut: attendance.checkOut || "",
-      workHours: attendance.workHours || "",
-      overtime: attendance.overtime || "0h",
-      status: attendance.status,
+      employeeId: exit.employeeId,
+      exitDate: exit.exitDate,
+      reason: exit.reason,
+      exitType: exit.exitType,
+      feedback: exit.feedback || "",
+      finalSettlement: exit.finalSettlement || null,
     });
     setIsDialogOpen(true);
   };
@@ -140,7 +139,7 @@ export default function AttendancePage() {
 
   const handleDialogClose = () => {
     setIsDialogOpen(false);
-    setEditingAttendance(null);
+    setEditingExit(null);
     form.reset();
   };
 
@@ -149,47 +148,35 @@ export default function AttendancePage() {
     return employee?.name || "Unknown";
   };
 
-  const filteredAttendances = attendances.filter((attendance) => {
-    const employeeName = getEmployeeName(attendance.employeeId);
+  const filteredExits = exits.filter((exit) => {
+    const employeeName = getEmployeeName(exit.employeeId);
     return employeeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      attendance.date.toLowerCase().includes(searchQuery.toLowerCase());
+      exit.exitType.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
-  const getStatusBadge = (status: string) => {
-    const variants: { [key: string]: "default" | "secondary" | "destructive" } = {
-      present: "default",
-      absent: "destructive",
-      late: "secondary",
-      half_day: "secondary",
-    };
-    return (
-      <Badge variant={variants[status] || "default"}>
-        {status.replace("_", " ")}
-      </Badge>
-    );
-  };
-
-  const columns: Column<Attendance>[] = [
+  const columns: Column<Exit>[] = [
     {
       header: "Employee",
       accessor: (row) => getEmployeeName(row.employeeId),
       className: "font-medium",
     },
     {
-      header: "Date",
-      accessor: "date",
+      header: "Exit Date",
+      accessor: "exitDate",
     },
     {
-      header: "Check In",
-      accessor: (row) => row.checkIn || "N/A",
+      header: "Exit Type",
+      accessor: (row) => (
+        <Badge variant="secondary">{row.exitType}</Badge>
+      ),
     },
     {
-      header: "Check Out",
-      accessor: (row) => row.checkOut || "N/A",
+      header: "Reason",
+      accessor: "reason",
     },
     {
-      header: "Status",
-      accessor: (row) => getStatusBadge(row.status),
+      header: "Final Settlement",
+      accessor: (row) => row.finalSettlement ? `$${parseFloat(row.finalSettlement).toLocaleString()}` : "N/A",
     },
     {
       header: "Actions",
@@ -202,7 +189,7 @@ export default function AttendancePage() {
               e.stopPropagation();
               handleEdit(row);
             }}
-            data-testid={`button-edit-attendance-${row.id}`}
+            data-testid={`button-edit-exit-${row.id}`}
           >
             <Pencil className="h-4 w-4" />
           </Button>
@@ -212,16 +199,16 @@ export default function AttendancePage() {
                 variant="ghost"
                 size="icon"
                 onClick={(e) => e.stopPropagation()}
-                data-testid={`button-delete-attendance-${row.id}`}
+                data-testid={`button-delete-exit-${row.id}`}
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Delete Attendance?</AlertDialogTitle>
+                <AlertDialogTitle>Delete Exit Record?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will permanently delete this attendance record. This action cannot be undone.
+                  This will permanently delete this exit record. This action cannot be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -248,21 +235,21 @@ export default function AttendancePage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Attendance</h1>
+          <h1 className="text-3xl font-bold">Exit Management</h1>
           <p className="text-muted-foreground mt-1">
-            Manage employee attendance records
+            Manage employee exit processes
           </p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
           <DialogTrigger asChild>
-            <Button data-testid="button-add-attendance">
+            <Button data-testid="button-add-exit">
               <Plus className="h-4 w-4 mr-2" />
-              Add Attendance
+              Add Exit
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{editingAttendance ? "Edit Attendance" : "Add New Attendance"}</DialogTitle>
+              <DialogTitle>{editingExit ? "Edit Exit Record" : "Add New Exit Record"}</DialogTitle>
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -297,12 +284,12 @@ export default function AttendancePage() {
 
                   <FormField
                     control={form.control}
-                    name="date"
+                    name="exitDate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Date *</FormLabel>
+                        <FormLabel>Exit Date *</FormLabel>
                         <FormControl>
-                          <Input type="date" {...field} data-testid="input-date" />
+                          <Input type="date" {...field} data-testid="input-exit-date" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -311,48 +298,20 @@ export default function AttendancePage() {
 
                   <FormField
                     control={form.control}
-                    name="checkIn"
+                    name="exitType"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Check In</FormLabel>
-                        <FormControl>
-                          <Input type="time" value={field.value || ""} onChange={field.onChange} data-testid="input-check-in" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="checkOut"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Check Out</FormLabel>
-                        <FormControl>
-                          <Input type="time" value={field.value || ""} onChange={field.onChange} data-testid="input-check-out" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="status"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Status *</FormLabel>
+                        <FormLabel>Exit Type *</FormLabel>
                         <Select value={field.value} onValueChange={field.onChange}>
                           <FormControl>
-                            <SelectTrigger data-testid="select-status">
-                              <SelectValue placeholder="Select status" />
+                            <SelectTrigger data-testid="select-exit-type">
+                              <SelectValue placeholder="Select exit type" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {STATUSES.map((status) => (
-                              <SelectItem key={status} value={status}>
-                                {status.replace("_", " ")}
+                            {EXIT_TYPES.map((type) => (
+                              <SelectItem key={type} value={type}>
+                                {type}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -361,14 +320,66 @@ export default function AttendancePage() {
                       </FormItem>
                     )}
                   />
+
+                  <FormField
+                    control={form.control}
+                    name="finalSettlement"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Final Settlement</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={field.value || ""}
+                              onChange={field.onChange}
+                              className="pl-9"
+                              data-testid="input-final-settlement"
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
+
+                <FormField
+                  control={form.control}
+                  name="reason"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Reason *</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} placeholder="Enter reason for exit" data-testid="input-reason" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="feedback"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Feedback</FormLabel>
+                      <FormControl>
+                        <Textarea value={field.value || ""} onChange={field.onChange} placeholder="Enter feedback" data-testid="input-feedback" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <div className="flex justify-end gap-2">
                   <Button type="button" variant="outline" onClick={handleDialogClose}>
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} data-testid="button-submit-attendance">
-                    {createMutation.isPending || updateMutation.isPending ? "Saving..." : editingAttendance ? "Update" : "Create"}
+                  <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} data-testid="button-submit-exit">
+                    {createMutation.isPending || updateMutation.isPending ? "Saving..." : editingExit ? "Update" : "Create"}
                   </Button>
                 </div>
               </form>
@@ -381,17 +392,17 @@ export default function AttendancePage() {
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search attendance..."
+            placeholder="Search exit records..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
-            data-testid="input-search-attendance"
+            data-testid="input-search-exit"
           />
         </div>
       </div>
 
       <DataTable
-        data={filteredAttendances}
+        data={filteredExits}
         columns={columns}
         onRowClick={() => {}}
         currentPage={1}

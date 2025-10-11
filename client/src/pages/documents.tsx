@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertAttendanceSchema, type Attendance, type Employee, type InsertAttendance } from "@shared/schema";
+import { insertDocumentSchema, type Document, type Employee, type InsertDocument } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -44,92 +44,90 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 
-const STATUSES = ["present", "absent", "late", "half_day"];
+const DOCUMENT_TYPES = ["contract", "certificate", "id_proof", "other"];
 
-export default function AttendancePage() {
+export default function Documents() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingAttendance, setEditingAttendance] = useState<Attendance | null>(null);
+  const [editingDocument, setEditingDocument] = useState<Document | null>(null);
   const { toast } = useToast();
 
-  const { data: attendances = [], isLoading } = useQuery<Attendance[]>({
-    queryKey: ["/api/attendance"],
+  const { data: documents = [], isLoading } = useQuery<Document[]>({
+    queryKey: ["/api/documents"],
   });
 
   const { data: employees = [] } = useQuery<Employee[]>({
     queryKey: ["/api/employees"],
   });
 
-  const form = useForm<InsertAttendance>({
-    resolver: zodResolver(insertAttendanceSchema),
+  const form = useForm<InsertDocument>({
+    resolver: zodResolver(insertDocumentSchema),
     defaultValues: {
       employeeId: 0,
-      date: "",
-      checkIn: "",
-      checkOut: "",
-      workHours: "",
-      overtime: "0h",
-      status: "present",
+      documentType: "",
+      documentName: "",
+      uploadDate: "",
+      expiryDate: null,
+      fileUrl: "",
     },
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: InsertAttendance) => apiRequest("/api/attendance", "POST", data),
+    mutationFn: (data: InsertDocument) => apiRequest("/api/documents", "POST", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
       setIsDialogOpen(false);
       form.reset();
-      toast({ title: "Attendance created successfully" });
+      toast({ title: "Document created successfully" });
     },
     onError: (error: any) => {
-      toast({ title: "Error creating attendance", description: error.message, variant: "destructive" });
+      toast({ title: "Error creating document", description: error.message, variant: "destructive" });
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<InsertAttendance> }) =>
-      apiRequest(`/api/attendance/${id}`, "PATCH", data),
+    mutationFn: ({ id, data }: { id: number; data: Partial<InsertDocument> }) =>
+      apiRequest(`/api/documents/${id}`, "PATCH", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
       setIsDialogOpen(false);
-      setEditingAttendance(null);
+      setEditingDocument(null);
       form.reset();
-      toast({ title: "Attendance updated successfully" });
+      toast({ title: "Document updated successfully" });
     },
     onError: (error: any) => {
-      toast({ title: "Error updating attendance", description: error.message, variant: "destructive" });
+      toast({ title: "Error updating document", description: error.message, variant: "destructive" });
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => apiRequest(`/api/attendance/${id}`, "DELETE"),
+    mutationFn: (id: number) => apiRequest(`/api/documents/${id}`, "DELETE"),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
-      toast({ title: "Attendance deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
+      toast({ title: "Document deleted successfully" });
     },
     onError: (error: any) => {
-      toast({ title: "Error deleting attendance", description: error.message, variant: "destructive" });
+      toast({ title: "Error deleting document", description: error.message, variant: "destructive" });
     },
   });
 
-  const onSubmit = (data: InsertAttendance) => {
-    if (editingAttendance) {
-      updateMutation.mutate({ id: editingAttendance.id, data });
+  const onSubmit = (data: InsertDocument) => {
+    if (editingDocument) {
+      updateMutation.mutate({ id: editingDocument.id, data });
     } else {
       createMutation.mutate(data);
     }
   };
 
-  const handleEdit = (attendance: Attendance) => {
-    setEditingAttendance(attendance);
+  const handleEdit = (document: Document) => {
+    setEditingDocument(document);
     form.reset({
-      employeeId: attendance.employeeId,
-      date: attendance.date,
-      checkIn: attendance.checkIn || "",
-      checkOut: attendance.checkOut || "",
-      workHours: attendance.workHours || "",
-      overtime: attendance.overtime || "0h",
-      status: attendance.status,
+      employeeId: document.employeeId,
+      documentType: document.documentType,
+      documentName: document.documentName,
+      uploadDate: document.uploadDate,
+      expiryDate: document.expiryDate || null,
+      fileUrl: document.fileUrl,
     });
     setIsDialogOpen(true);
   };
@@ -140,7 +138,7 @@ export default function AttendancePage() {
 
   const handleDialogClose = () => {
     setIsDialogOpen(false);
-    setEditingAttendance(null);
+    setEditingDocument(null);
     form.reset();
   };
 
@@ -149,47 +147,35 @@ export default function AttendancePage() {
     return employee?.name || "Unknown";
   };
 
-  const filteredAttendances = attendances.filter((attendance) => {
-    const employeeName = getEmployeeName(attendance.employeeId);
+  const filteredDocuments = documents.filter((document) => {
+    const employeeName = getEmployeeName(document.employeeId);
     return employeeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      attendance.date.toLowerCase().includes(searchQuery.toLowerCase());
+      document.documentName.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
-  const getStatusBadge = (status: string) => {
-    const variants: { [key: string]: "default" | "secondary" | "destructive" } = {
-      present: "default",
-      absent: "destructive",
-      late: "secondary",
-      half_day: "secondary",
-    };
-    return (
-      <Badge variant={variants[status] || "default"}>
-        {status.replace("_", " ")}
-      </Badge>
-    );
-  };
-
-  const columns: Column<Attendance>[] = [
+  const columns: Column<Document>[] = [
     {
       header: "Employee",
       accessor: (row) => getEmployeeName(row.employeeId),
       className: "font-medium",
     },
     {
-      header: "Date",
-      accessor: "date",
+      header: "Document Type",
+      accessor: (row) => (
+        <Badge variant="secondary">{row.documentType}</Badge>
+      ),
     },
     {
-      header: "Check In",
-      accessor: (row) => row.checkIn || "N/A",
+      header: "Document Name",
+      accessor: "documentName",
     },
     {
-      header: "Check Out",
-      accessor: (row) => row.checkOut || "N/A",
+      header: "Upload Date",
+      accessor: "uploadDate",
     },
     {
-      header: "Status",
-      accessor: (row) => getStatusBadge(row.status),
+      header: "Expiry Date",
+      accessor: (row) => row.expiryDate || "N/A",
     },
     {
       header: "Actions",
@@ -202,7 +188,7 @@ export default function AttendancePage() {
               e.stopPropagation();
               handleEdit(row);
             }}
-            data-testid={`button-edit-attendance-${row.id}`}
+            data-testid={`button-edit-document-${row.id}`}
           >
             <Pencil className="h-4 w-4" />
           </Button>
@@ -212,16 +198,16 @@ export default function AttendancePage() {
                 variant="ghost"
                 size="icon"
                 onClick={(e) => e.stopPropagation()}
-                data-testid={`button-delete-attendance-${row.id}`}
+                data-testid={`button-delete-document-${row.id}`}
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Delete Attendance?</AlertDialogTitle>
+                <AlertDialogTitle>Delete Document?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will permanently delete this attendance record. This action cannot be undone.
+                  This will permanently delete this document. This action cannot be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -248,21 +234,21 @@ export default function AttendancePage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Attendance</h1>
+          <h1 className="text-3xl font-bold">Employee Documents</h1>
           <p className="text-muted-foreground mt-1">
-            Manage employee attendance records
+            Manage employee documents
           </p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
           <DialogTrigger asChild>
-            <Button data-testid="button-add-attendance">
+            <Button data-testid="button-add-document">
               <Plus className="h-4 w-4 mr-2" />
-              Add Attendance
+              Add Document
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>{editingAttendance ? "Edit Attendance" : "Add New Attendance"}</DialogTitle>
+              <DialogTitle>{editingDocument ? "Edit Document" : "Add New Document"}</DialogTitle>
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -297,66 +283,85 @@ export default function AttendancePage() {
 
                   <FormField
                     control={form.control}
-                    name="date"
+                    name="documentType"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Date *</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} data-testid="input-date" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="checkIn"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Check In</FormLabel>
-                        <FormControl>
-                          <Input type="time" value={field.value || ""} onChange={field.onChange} data-testid="input-check-in" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="checkOut"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Check Out</FormLabel>
-                        <FormControl>
-                          <Input type="time" value={field.value || ""} onChange={field.onChange} data-testid="input-check-out" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="status"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Status *</FormLabel>
+                        <FormLabel>Document Type *</FormLabel>
                         <Select value={field.value} onValueChange={field.onChange}>
                           <FormControl>
-                            <SelectTrigger data-testid="select-status">
-                              <SelectValue placeholder="Select status" />
+                            <SelectTrigger data-testid="select-document-type">
+                              <SelectValue placeholder="Select document type" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {STATUSES.map((status) => (
-                              <SelectItem key={status} value={status}>
-                                {status.replace("_", " ")}
+                            {DOCUMENT_TYPES.map((type) => (
+                              <SelectItem key={type} value={type}>
+                                {type.replace("_", " ")}
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="documentName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Document Name *</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="e.g., Employment Contract" data-testid="input-document-name" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="uploadDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Upload Date *</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} data-testid="input-upload-date" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="expiryDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Expiry Date</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="date"
+                            value={field.value || ""}
+                            onChange={field.onChange}
+                            data-testid="input-expiry-date"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="fileUrl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>File URL *</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="https://..." data-testid="input-file-url" />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -367,8 +372,8 @@ export default function AttendancePage() {
                   <Button type="button" variant="outline" onClick={handleDialogClose}>
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} data-testid="button-submit-attendance">
-                    {createMutation.isPending || updateMutation.isPending ? "Saving..." : editingAttendance ? "Update" : "Create"}
+                  <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} data-testid="button-submit-document">
+                    {createMutation.isPending || updateMutation.isPending ? "Saving..." : editingDocument ? "Update" : "Create"}
                   </Button>
                 </div>
               </form>
@@ -381,17 +386,17 @@ export default function AttendancePage() {
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search attendance..."
+            placeholder="Search documents..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
-            data-testid="input-search-attendance"
+            data-testid="input-search-documents"
           />
         </div>
       </div>
 
       <DataTable
-        data={filteredAttendances}
+        data={filteredDocuments}
         columns={columns}
         onRowClick={() => {}}
         currentPage={1}

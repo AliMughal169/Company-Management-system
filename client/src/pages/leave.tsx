@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { DataTable, Column } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Plus, Search, Pencil, Trash2 } from "lucide-react";
 import {
   Dialog,
@@ -28,7 +29,7 @@ import {
 } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertAttendanceSchema, type Attendance, type Employee, type InsertAttendance } from "@shared/schema";
+import { insertLeaveSchema, type Leave, type Employee, type InsertLeave } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -44,92 +45,91 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 
-const STATUSES = ["present", "absent", "late", "half_day"];
+const LEAVE_TYPES = ["sick", "vacation", "personal", "unpaid"];
+const STATUSES = ["pending", "approved", "rejected"];
 
-export default function AttendancePage() {
+export default function LeaveManagement() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingAttendance, setEditingAttendance] = useState<Attendance | null>(null);
+  const [editingLeave, setEditingLeave] = useState<Leave | null>(null);
   const { toast } = useToast();
 
-  const { data: attendances = [], isLoading } = useQuery<Attendance[]>({
-    queryKey: ["/api/attendance"],
+  const { data: leaves = [], isLoading } = useQuery<Leave[]>({
+    queryKey: ["/api/leave"],
   });
 
   const { data: employees = [] } = useQuery<Employee[]>({
     queryKey: ["/api/employees"],
   });
 
-  const form = useForm<InsertAttendance>({
-    resolver: zodResolver(insertAttendanceSchema),
+  const form = useForm<InsertLeave>({
+    resolver: zodResolver(insertLeaveSchema),
     defaultValues: {
       employeeId: 0,
-      date: "",
-      checkIn: "",
-      checkOut: "",
-      workHours: "",
-      overtime: "0h",
-      status: "present",
+      leaveType: "",
+      startDate: "",
+      endDate: "",
+      reason: "",
+      status: "pending",
     },
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: InsertAttendance) => apiRequest("/api/attendance", "POST", data),
+    mutationFn: (data: InsertLeave) => apiRequest("/api/leave", "POST", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/leave"] });
       setIsDialogOpen(false);
       form.reset();
-      toast({ title: "Attendance created successfully" });
+      toast({ title: "Leave request created successfully" });
     },
     onError: (error: any) => {
-      toast({ title: "Error creating attendance", description: error.message, variant: "destructive" });
+      toast({ title: "Error creating leave", description: error.message, variant: "destructive" });
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<InsertAttendance> }) =>
-      apiRequest(`/api/attendance/${id}`, "PATCH", data),
+    mutationFn: ({ id, data }: { id: number; data: Partial<InsertLeave> }) =>
+      apiRequest(`/api/leave/${id}`, "PATCH", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/leave"] });
       setIsDialogOpen(false);
-      setEditingAttendance(null);
+      setEditingLeave(null);
       form.reset();
-      toast({ title: "Attendance updated successfully" });
+      toast({ title: "Leave request updated successfully" });
     },
     onError: (error: any) => {
-      toast({ title: "Error updating attendance", description: error.message, variant: "destructive" });
+      toast({ title: "Error updating leave", description: error.message, variant: "destructive" });
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => apiRequest(`/api/attendance/${id}`, "DELETE"),
+    mutationFn: (id: number) => apiRequest(`/api/leave/${id}`, "DELETE"),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
-      toast({ title: "Attendance deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/leave"] });
+      toast({ title: "Leave request deleted successfully" });
     },
     onError: (error: any) => {
-      toast({ title: "Error deleting attendance", description: error.message, variant: "destructive" });
+      toast({ title: "Error deleting leave", description: error.message, variant: "destructive" });
     },
   });
 
-  const onSubmit = (data: InsertAttendance) => {
-    if (editingAttendance) {
-      updateMutation.mutate({ id: editingAttendance.id, data });
+  const onSubmit = (data: InsertLeave) => {
+    if (editingLeave) {
+      updateMutation.mutate({ id: editingLeave.id, data });
     } else {
       createMutation.mutate(data);
     }
   };
 
-  const handleEdit = (attendance: Attendance) => {
-    setEditingAttendance(attendance);
+  const handleEdit = (leave: Leave) => {
+    setEditingLeave(leave);
     form.reset({
-      employeeId: attendance.employeeId,
-      date: attendance.date,
-      checkIn: attendance.checkIn || "",
-      checkOut: attendance.checkOut || "",
-      workHours: attendance.workHours || "",
-      overtime: attendance.overtime || "0h",
-      status: attendance.status,
+      employeeId: leave.employeeId,
+      leaveType: leave.leaveType,
+      startDate: leave.startDate,
+      endDate: leave.endDate,
+      reason: leave.reason,
+      status: leave.status,
     });
     setIsDialogOpen(true);
   };
@@ -140,7 +140,7 @@ export default function AttendancePage() {
 
   const handleDialogClose = () => {
     setIsDialogOpen(false);
-    setEditingAttendance(null);
+    setEditingLeave(null);
     form.reset();
   };
 
@@ -149,43 +149,48 @@ export default function AttendancePage() {
     return employee?.name || "Unknown";
   };
 
-  const filteredAttendances = attendances.filter((attendance) => {
-    const employeeName = getEmployeeName(attendance.employeeId);
+  const filteredLeaves = leaves.filter((leave) => {
+    const employeeName = getEmployeeName(leave.employeeId);
     return employeeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      attendance.date.toLowerCase().includes(searchQuery.toLowerCase());
+      leave.leaveType.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
   const getStatusBadge = (status: string) => {
     const variants: { [key: string]: "default" | "secondary" | "destructive" } = {
-      present: "default",
-      absent: "destructive",
-      late: "secondary",
-      half_day: "secondary",
+      pending: "secondary",
+      approved: "default",
+      rejected: "destructive",
     };
     return (
       <Badge variant={variants[status] || "default"}>
-        {status.replace("_", " ")}
+        {status}
       </Badge>
     );
   };
 
-  const columns: Column<Attendance>[] = [
+  const columns: Column<Leave>[] = [
     {
       header: "Employee",
       accessor: (row) => getEmployeeName(row.employeeId),
       className: "font-medium",
     },
     {
-      header: "Date",
-      accessor: "date",
+      header: "Leave Type",
+      accessor: (row) => (
+        <Badge variant="secondary">{row.leaveType}</Badge>
+      ),
     },
     {
-      header: "Check In",
-      accessor: (row) => row.checkIn || "N/A",
+      header: "Start Date",
+      accessor: "startDate",
     },
     {
-      header: "Check Out",
-      accessor: (row) => row.checkOut || "N/A",
+      header: "End Date",
+      accessor: "endDate",
+    },
+    {
+      header: "Reason",
+      accessor: "reason",
     },
     {
       header: "Status",
@@ -202,7 +207,7 @@ export default function AttendancePage() {
               e.stopPropagation();
               handleEdit(row);
             }}
-            data-testid={`button-edit-attendance-${row.id}`}
+            data-testid={`button-edit-leave-${row.id}`}
           >
             <Pencil className="h-4 w-4" />
           </Button>
@@ -212,16 +217,16 @@ export default function AttendancePage() {
                 variant="ghost"
                 size="icon"
                 onClick={(e) => e.stopPropagation()}
-                data-testid={`button-delete-attendance-${row.id}`}
+                data-testid={`button-delete-leave-${row.id}`}
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Delete Attendance?</AlertDialogTitle>
+                <AlertDialogTitle>Delete Leave Request?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will permanently delete this attendance record. This action cannot be undone.
+                  This will permanently delete this leave request. This action cannot be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -248,21 +253,21 @@ export default function AttendancePage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Attendance</h1>
+          <h1 className="text-3xl font-bold">Leave Management</h1>
           <p className="text-muted-foreground mt-1">
-            Manage employee attendance records
+            Manage employee leave requests
           </p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
           <DialogTrigger asChild>
-            <Button data-testid="button-add-attendance">
+            <Button data-testid="button-add-leave">
               <Plus className="h-4 w-4 mr-2" />
-              Add Attendance
+              Add Leave
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>{editingAttendance ? "Edit Attendance" : "Add New Attendance"}</DialogTitle>
+              <DialogTitle>{editingLeave ? "Edit Leave Request" : "Add New Leave Request"}</DialogTitle>
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -297,12 +302,37 @@ export default function AttendancePage() {
 
                   <FormField
                     control={form.control}
-                    name="date"
+                    name="leaveType"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Date *</FormLabel>
+                        <FormLabel>Leave Type *</FormLabel>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-leave-type">
+                              <SelectValue placeholder="Select leave type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {LEAVE_TYPES.map((type) => (
+                              <SelectItem key={type} value={type}>
+                                {type}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="startDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Start Date *</FormLabel>
                         <FormControl>
-                          <Input type="date" {...field} data-testid="input-date" />
+                          <Input type="date" {...field} data-testid="input-start-date" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -311,26 +341,12 @@ export default function AttendancePage() {
 
                   <FormField
                     control={form.control}
-                    name="checkIn"
+                    name="endDate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Check In</FormLabel>
+                        <FormLabel>End Date *</FormLabel>
                         <FormControl>
-                          <Input type="time" value={field.value || ""} onChange={field.onChange} data-testid="input-check-in" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="checkOut"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Check Out</FormLabel>
-                        <FormControl>
-                          <Input type="time" value={field.value || ""} onChange={field.onChange} data-testid="input-check-out" />
+                          <Input type="date" {...field} data-testid="input-end-date" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -352,7 +368,7 @@ export default function AttendancePage() {
                           <SelectContent>
                             {STATUSES.map((status) => (
                               <SelectItem key={status} value={status}>
-                                {status.replace("_", " ")}
+                                {status}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -363,12 +379,26 @@ export default function AttendancePage() {
                   />
                 </div>
 
+                <FormField
+                  control={form.control}
+                  name="reason"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Reason *</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} placeholder="Enter reason for leave" data-testid="input-reason" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <div className="flex justify-end gap-2">
                   <Button type="button" variant="outline" onClick={handleDialogClose}>
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} data-testid="button-submit-attendance">
-                    {createMutation.isPending || updateMutation.isPending ? "Saving..." : editingAttendance ? "Update" : "Create"}
+                  <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} data-testid="button-submit-leave">
+                    {createMutation.isPending || updateMutation.isPending ? "Saving..." : editingLeave ? "Update" : "Create"}
                   </Button>
                 </div>
               </form>
@@ -381,17 +411,17 @@ export default function AttendancePage() {
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search attendance..."
+            placeholder="Search leave requests..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
-            data-testid="input-search-attendance"
+            data-testid="input-search-leave"
           />
         </div>
       </div>
 
       <DataTable
-        data={filteredAttendances}
+        data={filteredLeaves}
         columns={columns}
         onRowClick={() => {}}
         currentPage={1}
