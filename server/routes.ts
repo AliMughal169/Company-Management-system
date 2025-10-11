@@ -702,6 +702,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get next ID preview without incrementing
+  app.get("/api/id-sequences/:module/preview", async (req, res) => {
+    try {
+      const module = req.params.module;
+      const [sequence] = await db.select().from(idSequences).where(eq(idSequences.module, module));
+      
+      if (!sequence) {
+        return res.status(404).json({ error: "Sequence not found" });
+      }
+
+      const nextId = `${sequence.prefix}${String(sequence.nextNumber).padStart(4, '0')}`;
+      res.json({ id: nextId });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Initialize default ID sequences if they don't exist
+  app.post("/api/id-sequences/initialize", async (req, res) => {
+    try {
+      const defaultSequences = [
+        { module: 'invoice', prefix: 'INV-', nextNumber: 1 },
+        { module: 'proforma', prefix: 'PF-', nextNumber: 1 },
+        { module: 'employee', prefix: 'EMP-', nextNumber: 1 },
+        { module: 'expense', prefix: 'EXP-', nextNumber: 1 },
+        { module: 'customer', prefix: 'CUST-', nextNumber: 1 },
+        { module: 'stock', prefix: 'STK-', nextNumber: 1 },
+      ];
+
+      for (const seq of defaultSequences) {
+        const existing = await db.select().from(idSequences).where(eq(idSequences.module, seq.module));
+        if (existing.length === 0) {
+          await db.insert(idSequences).values(seq);
+        }
+      }
+
+      res.json({ success: true, message: "Default sequences initialized" });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

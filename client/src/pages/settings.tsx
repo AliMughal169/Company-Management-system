@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -90,6 +90,15 @@ export default function Settings() {
   const { data: idSequences = [] } = useQuery<IdSequence[]>({
     queryKey: ["/api/id-sequences"],
   });
+
+  // Initialize default ID sequences if none exist
+  useEffect(() => {
+    if (idSequences.length === 0) {
+      fetch("/api/id-sequences/initialize", { method: "POST" })
+        .then(() => queryClient.invalidateQueries({ queryKey: ["/api/id-sequences"] }))
+        .catch(error => console.error("Error initializing ID sequences:", error));
+    }
+  }, [idSequences]);
 
   // Tax Rate Form
   const taxForm = useForm<InsertTaxRate>({

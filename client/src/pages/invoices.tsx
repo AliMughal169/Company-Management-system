@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { DataTable, Column } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
@@ -32,9 +32,10 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { insertInvoiceSchema, type Invoice, type Customer } from "@shared/schema";
+import { insertInvoiceSchema, type Invoice, type Customer, type TaxRate, type InvoiceNote } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -78,6 +79,14 @@ export default function Invoices() {
     queryKey: ["/api/customers"],
   });
 
+  const { data: taxRates = [] } = useQuery<TaxRate[]>({
+    queryKey: ["/api/tax-rates"],
+  });
+
+  const { data: invoiceNotes = [] } = useQuery<InvoiceNote[]>({
+    queryKey: ["/api/invoice-notes"],
+  });
+
   const form = useForm<InvoiceFormData>({
     resolver: zodResolver(invoiceFormSchema),
     defaultValues: {
@@ -90,6 +99,20 @@ export default function Invoices() {
       lineItems: [{ description: "", quantity: 1, rate: 0 }],
     },
   });
+
+  // Fetch next invoice number when opening create dialog
+  useEffect(() => {
+    if (isDialogOpen && !editingInvoice) {
+      fetch("/api/id-sequences/invoice/preview")
+        .then(res => res.json())
+        .then(data => {
+          form.setValue("invoiceNumber", data.id);
+        })
+        .catch(error => {
+          console.error("Error fetching next invoice ID:", error);
+        });
+    }
+  }, [isDialogOpen, editingInvoice, form]);
 
   const lineItems = form.watch("lineItems") || [];
 
@@ -141,12 +164,28 @@ export default function Invoices() {
     },
   });
 
-  const onSubmit = (data: InvoiceFormData) => {
+  const onSubmit = async (data: InvoiceFormData) => {
     const { lineItems, ...rest } = data;
     const { subtotal, tax, total } = calculateTotals();
     
+    let invoiceNumber = rest.invoiceNumber;
+    
+    // Generate next ID when creating a new invoice
+    if (!editingInvoice) {
+      try {
+        const response = await fetch("/api/id-sequences/invoice/next", { method: "POST" });
+        const idData = await response.json();
+        invoiceNumber = idData.id;
+      } catch (error) {
+        console.error("Error generating invoice ID:", error);
+        toast({ title: "Error generating invoice number", variant: "destructive" });
+        return;
+      }
+    }
+    
     const invoiceData = {
       ...rest,
+      invoiceNumber,
       items: JSON.stringify(lineItems),
       subtotal: subtotal.toString(),
       tax: tax.toString(),
@@ -313,8 +352,9 @@ export default function Invoices() {
                       <FormItem>
                         <FormLabel>Invoice Number *</FormLabel>
                         <FormControl>
-                          <Input {...field} data-testid="input-invoice-number" />
+                          <Input {...field} readOnly className="bg-muted" data-testid="input-invoice-number" />
                         </FormControl>
+                        <p className="text-xs text-muted-foreground">Auto-generated</p>
                         <FormMessage />
                       </FormItem>
                     )}
