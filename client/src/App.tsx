@@ -24,6 +24,7 @@ import EmployeeDocuments from "@/pages/documents";
 import Benefits from "@/pages/benefits";
 import Training from "@/pages/training";
 import ExitManagement from "@/pages/exit";
+import Settings from "@/pages/settings";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -46,6 +47,7 @@ function Router() {
       <Route path="/benefits" component={Benefits} />
       <Route path="/training" component={Training} />
       <Route path="/exit" component={ExitManagement} />
+      <Route path="/settings" component={Settings} />
       <Route component={NotFound} />
     </Switch>
   );

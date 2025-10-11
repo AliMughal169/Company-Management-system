@@ -15,7 +15,11 @@ import {
   documents, insertDocumentSchema,
   benefits, insertBenefitSchema,
   training, insertTrainingSchema,
-  exit, insertExitSchema
+  exit, insertExitSchema,
+  taxRates, insertTaxRateSchema,
+  invoiceNotes, insertInvoiceNoteSchema,
+  settings, insertSettingSchema,
+  idSequences, insertIdSequenceSchema
 } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
@@ -534,6 +538,165 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       await db.delete(exit).where(eq(exit.id, id));
       res.json({ success: true });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // ========== TAX RATES ==========
+  app.get("/api/tax-rates", async (req, res) => {
+    const allTaxRates = await db.select().from(taxRates);
+    res.json(allTaxRates);
+  });
+
+  app.post("/api/tax-rates", async (req, res) => {
+    try {
+      const validatedData = insertTaxRateSchema.parse(req.body);
+      const [newTaxRate] = await db.insert(taxRates).values(validatedData).returning();
+      res.json(newTaxRate);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/tax-rates/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validatedData = insertTaxRateSchema.partial().parse(req.body);
+      const [updated] = await db.update(taxRates).set(validatedData).where(eq(taxRates.id, id)).returning();
+      res.json(updated);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/tax-rates/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await db.delete(taxRates).where(eq(taxRates.id, id));
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // ========== INVOICE NOTES ==========
+  app.get("/api/invoice-notes", async (req, res) => {
+    const allNotes = await db.select().from(invoiceNotes);
+    res.json(allNotes);
+  });
+
+  app.post("/api/invoice-notes", async (req, res) => {
+    try {
+      const validatedData = insertInvoiceNoteSchema.parse(req.body);
+      const [newNote] = await db.insert(invoiceNotes).values(validatedData).returning();
+      res.json(newNote);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/invoice-notes/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validatedData = insertInvoiceNoteSchema.partial().parse(req.body);
+      const [updated] = await db.update(invoiceNotes).set(validatedData).where(eq(invoiceNotes.id, id)).returning();
+      res.json(updated);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/invoice-notes/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await db.delete(invoiceNotes).where(eq(invoiceNotes.id, id));
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // ========== SETTINGS ==========
+  app.get("/api/settings", async (req, res) => {
+    const allSettings = await db.select().from(settings);
+    res.json(allSettings);
+  });
+
+  app.get("/api/settings/:key", async (req, res) => {
+    const [setting] = await db.select().from(settings).where(eq(settings.key, req.params.key));
+    res.json(setting || null);
+  });
+
+  app.post("/api/settings", async (req, res) => {
+    try {
+      const validatedData = insertSettingSchema.parse(req.body);
+      const [newSetting] = await db.insert(settings).values(validatedData).returning();
+      res.json(newSetting);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/settings/:key", async (req, res) => {
+    try {
+      const validatedData = insertSettingSchema.partial().parse(req.body);
+      const [updated] = await db.update(settings).set(validatedData).where(eq(settings.key, req.params.key)).returning();
+      res.json(updated);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // ========== ID SEQUENCES ==========
+  app.get("/api/id-sequences", async (req, res) => {
+    const allSequences = await db.select().from(idSequences);
+    res.json(allSequences);
+  });
+
+  app.get("/api/id-sequences/:module", async (req, res) => {
+    const [sequence] = await db.select().from(idSequences).where(eq(idSequences.module, req.params.module));
+    res.json(sequence || null);
+  });
+
+  app.post("/api/id-sequences", async (req, res) => {
+    try {
+      const validatedData = insertIdSequenceSchema.parse(req.body);
+      const [newSequence] = await db.insert(idSequences).values(validatedData).returning();
+      res.json(newSequence);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/id-sequences/:module", async (req, res) => {
+    try {
+      const validatedData = insertIdSequenceSchema.partial().parse(req.body);
+      const [updated] = await db.update(idSequences).set(validatedData).where(eq(idSequences.module, req.params.module)).returning();
+      res.json(updated);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Generate next ID for a module
+  app.post("/api/id-sequences/:module/next", async (req, res) => {
+    try {
+      const module = req.params.module;
+      const [sequence] = await db.select().from(idSequences).where(eq(idSequences.module, module));
+      
+      if (!sequence) {
+        return res.status(404).json({ error: "Sequence not found" });
+      }
+
+      const nextId = `${sequence.prefix}${String(sequence.nextNumber).padStart(4, '0')}`;
+      
+      // Increment the sequence
+      await db.update(idSequences)
+        .set({ nextNumber: sequence.nextNumber + 1 })
+        .where(eq(idSequences.module, module));
+
+      res.json({ id: nextId });
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }

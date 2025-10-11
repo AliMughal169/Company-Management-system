@@ -315,3 +315,69 @@ export const insertExitSchema = createInsertSchema(exit).omit({
 
 export type InsertExit = z.infer<typeof insertExitSchema>;
 export type Exit = typeof exit.$inferSelect;
+
+// Tax Rates
+export const taxRates = pgTable("tax_rates", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  percentage: decimal("percentage", { precision: 5, scale: 2 }).notNull(),
+  isDefault: boolean("is_default").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertTaxRateSchema = createInsertSchema(taxRates).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertTaxRate = z.infer<typeof insertTaxRateSchema>;
+export type TaxRate = typeof taxRates.$inferSelect;
+
+// Invoice Notes Templates
+export const invoiceNotes = pgTable("invoice_notes", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertInvoiceNoteSchema = createInsertSchema(invoiceNotes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertInvoiceNote = z.infer<typeof insertInvoiceNoteSchema>;
+export type InvoiceNote = typeof invoiceNotes.$inferSelect;
+
+// Settings (for currency and ID sequences)
+export const settings = pgTable("settings", {
+  id: serial("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertSettingSchema = createInsertSchema(settings).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export type InsertSetting = z.infer<typeof insertSettingSchema>;
+export type Setting = typeof settings.$inferSelect;
+
+// ID Sequences - tracks the next ID number for each module
+export const idSequences = pgTable("id_sequences", {
+  id: serial("id").primaryKey(),
+  module: text("module").notNull().unique(), // invoice, proforma, employee, etc.
+  prefix: text("prefix").notNull(),
+  nextNumber: integer("next_number").notNull().default(1),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertIdSequenceSchema = createInsertSchema(idSequences).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export type InsertIdSequence = z.infer<typeof insertIdSequenceSchema>;
+export type IdSequence = typeof idSequences.$inferSelect;

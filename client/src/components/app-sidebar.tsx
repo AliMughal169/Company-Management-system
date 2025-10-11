@@ -18,6 +18,7 @@ import {
   GraduationCap,
   LogOut,
   ChevronDown,
+  Settings,
 } from "lucide-react";
 import {
   Sidebar,
@@ -61,6 +62,7 @@ const payrollMenuItems = [
 ];
 
 const systemMenuItems = [
+  { title: "Settings", url: "/settings", icon: Settings },
   { title: "Audit Reports", url: "/audit-reports", icon: ClipboardList },
   { title: "Permissions", url: "/permissions", icon: ShieldCheck },
 ];
