@@ -179,10 +179,12 @@ export default function ProformaInvoices() {
     deleteMutation.mutate(id);
   };
 
-  const handleDialogClose = () => {
-    setIsDialogOpen(false);
-    setEditingProformaInvoice(null);
-    form.reset();
+  const handleDialogClose = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setEditingProformaInvoice(null);
+      form.reset();
+    }
   };
 
   const addLineItem = () => {
@@ -510,7 +512,7 @@ export default function ProformaInvoices() {
                 />
 
                 <DialogFooter>
-                  <Button type="button" variant="outline" onClick={handleDialogClose}>
+                  <Button type="button" variant="outline" onClick={() => handleDialogClose(false)}>
                     Cancel
                   </Button>
                   <Button 

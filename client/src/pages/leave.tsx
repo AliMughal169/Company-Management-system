@@ -138,10 +138,12 @@ export default function LeaveManagement() {
     deleteMutation.mutate(id);
   };
 
-  const handleDialogClose = () => {
-    setIsDialogOpen(false);
-    setEditingLeave(null);
-    form.reset();
+  const handleDialogClose = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setEditingLeave(null);
+      form.reset();
+    }
   };
 
   const getEmployeeName = (employeeId: number) => {
@@ -394,7 +396,7 @@ export default function LeaveManagement() {
                 />
 
                 <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={handleDialogClose}>
+                  <Button type="button" variant="outline" onClick={() => handleDialogClose(false)}>
                     Cancel
                   </Button>
                   <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} data-testid="button-submit-leave">

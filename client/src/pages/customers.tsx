@@ -125,10 +125,12 @@ export default function Customers() {
     deleteMutation.mutate(id);
   };
 
-  const handleDialogClose = () => {
-    setIsDialogOpen(false);
-    setEditingCustomer(null);
-    form.reset();
+  const handleDialogClose = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setEditingCustomer(null);
+      form.reset();
+    }
   };
 
   const filteredCustomers = customers.filter((customer) =>
@@ -338,7 +340,7 @@ export default function Customers() {
                   )}
                 />
                 <DialogFooter>
-                  <Button type="button" variant="outline" onClick={handleDialogClose}>
+                  <Button type="button" variant="outline" onClick={() => handleDialogClose(false)}>
                     Cancel
                   </Button>
                   <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} data-testid="button-save-customer">

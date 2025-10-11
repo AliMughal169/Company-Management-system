@@ -137,10 +137,12 @@ export default function Expenses() {
     deleteMutation.mutate(id);
   };
 
-  const handleDialogClose = () => {
-    setIsDialogOpen(false);
-    setEditingExpense(null);
-    form.reset();
+  const handleDialogClose = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setEditingExpense(null);
+      form.reset();
+    }
   };
 
   const filteredExpenses = expenses.filter((expense) =>
@@ -387,7 +389,7 @@ export default function Expenses() {
                 />
 
                 <DialogFooter>
-                  <Button type="button" variant="outline" onClick={handleDialogClose}>
+                  <Button type="button" variant="outline" onClick={() => handleDialogClose(false)}>
                     Cancel
                   </Button>
                   <Button 

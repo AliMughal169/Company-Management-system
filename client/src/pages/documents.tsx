@@ -136,10 +136,12 @@ export default function Documents() {
     deleteMutation.mutate(id);
   };
 
-  const handleDialogClose = () => {
-    setIsDialogOpen(false);
-    setEditingDocument(null);
-    form.reset();
+  const handleDialogClose = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setEditingDocument(null);
+      form.reset();
+    }
   };
 
   const getEmployeeName = (employeeId: number) => {
@@ -369,7 +371,7 @@ export default function Documents() {
                 </div>
 
                 <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={handleDialogClose}>
+                  <Button type="button" variant="outline" onClick={() => handleDialogClose(false)}>
                     Cancel
                   </Button>
                   <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} data-testid="button-submit-document">

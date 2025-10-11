@@ -140,10 +140,12 @@ export default function Employees() {
     deleteMutation.mutate(id);
   };
 
-  const handleDialogClose = () => {
-    setIsDialogOpen(false);
-    setEditingEmployee(null);
-    form.reset();
+  const handleDialogClose = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setEditingEmployee(null);
+      form.reset();
+    }
   };
 
   const filteredEmployees = employees.filter((employee) =>
@@ -428,7 +430,7 @@ export default function Employees() {
                 </div>
 
                 <DialogFooter>
-                  <Button type="button" variant="outline" onClick={handleDialogClose}>
+                  <Button type="button" variant="outline" onClick={() => handleDialogClose(false)}>
                     Cancel
                   </Button>
                   <Button 

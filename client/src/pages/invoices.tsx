@@ -179,10 +179,12 @@ export default function Invoices() {
     deleteMutation.mutate(id);
   };
 
-  const handleDialogClose = () => {
-    setIsDialogOpen(false);
-    setEditingInvoice(null);
-    form.reset();
+  const handleDialogClose = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setEditingInvoice(null);
+      form.reset();
+    }
   };
 
   const addLineItem = () => {
@@ -509,7 +511,7 @@ export default function Invoices() {
                 />
 
                 <DialogFooter>
-                  <Button type="button" variant="outline" onClick={handleDialogClose}>
+                  <Button type="button" variant="outline" onClick={() => handleDialogClose(false)}>
                     Cancel
                   </Button>
                   <Button 

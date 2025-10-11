@@ -138,10 +138,12 @@ export default function Stock() {
     deleteMutation.mutate(id);
   };
 
-  const handleDialogClose = () => {
-    setIsDialogOpen(false);
-    setEditingStock(null);
-    form.reset();
+  const handleDialogClose = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setEditingStock(null);
+      form.reset();
+    }
   };
 
   const filteredStock = stockItems.filter((item) =>
@@ -426,7 +428,7 @@ export default function Stock() {
                 />
 
                 <DialogFooter>
-                  <Button type="button" variant="outline" onClick={handleDialogClose}>
+                  <Button type="button" variant="outline" onClick={() => handleDialogClose(false)}>
                     Cancel
                   </Button>
                   <Button 
