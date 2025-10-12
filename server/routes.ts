@@ -22,20 +22,78 @@ import {
   idSequences, insertIdSequenceSchema
 } from "@shared/schema";
 import { eq } from "drizzle-orm";
-import { setupAuth, isAuthenticated } from "./replitAuth";
-import { storage } from "./storage";
+import { isAuthenticated, verifyPassword, hashPassword, getCurrentUser } from "./auth";
+import { users, insertUserSchema } from "@shared/schema";
+import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
-  // ========== AUTH SETUP ==========
-  await setupAuth(app);
-
-  // ========== AUTH ROUTES ==========
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  // ========== AUTH ROUTES (PUBLIC) ==========
+  
+  // Login with username/password
+  app.post('/api/login', async (req, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      res.json(user);
+      const { username, password } = req.body;
+      
+      if (!username || !password) {
+        return res.status(400).json({ message: "Username and password are required" });
+      }
+
+      // Find user by username
+      const user = await db.query.users.findFirst({
+        where: eq(users.username, username),
+      });
+
+      if (!user) {
+        return res.status(401).json({ message: "Invalid username or password" });
+      }
+
+      // Check if user is active
+      if (!user.isActive) {
+        return res.status(403).json({ message: "Account is disabled" });
+      }
+
+      // Verify password
+      const isValidPassword = await verifyPassword(password, user.passwordHash);
+      
+      if (!isValidPassword) {
+        return res.status(401).json({ message: "Invalid username or password" });
+      }
+
+      // Set session
+      req.session.userId = user.id;
+
+      // Return user data (without password hash)
+      const { passwordHash, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error("Login error:", error);
+      res.status(500).json({ message: "Login failed" });
+    }
+  });
+
+  // Logout
+  app.post('/api/logout', (req, res) => {
+    req.session.destroy((err) => {
+      if (err) {
+        return res.status(500).json({ message: "Logout failed" });
+      }
+      res.clearCookie('connect.sid');
+      res.json({ message: "Logged out successfully" });
+    });
+  });
+
+  // Get current user (protected)
+  app.get('/api/auth/user', isAuthenticated, async (req, res) => {
+    try {
+      const user = await getCurrentUser(req);
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      // Return user without password hash
+      const { passwordHash, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
