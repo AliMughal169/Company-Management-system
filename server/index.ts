@@ -5,7 +5,7 @@ import crypto from "crypto";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { db } from "./db";
-
+import { startScheduler } from "./scheduler";
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -70,7 +70,8 @@ app.use((req, res, next) => {
 
   next();
 });
-
+// Start the payment reminder scheduler
+startScheduler();
 (async () => {
   const server = await registerRoutes(app);
 

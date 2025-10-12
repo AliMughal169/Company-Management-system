@@ -7,8 +7,21 @@ import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { BarChart3, Loader2 } from "lucide-react";
 import type { User } from "@shared/schema";
@@ -34,18 +47,18 @@ export default function Login() {
 
   const loginMutation = useMutation({
     mutationFn: async (data: LoginFormData) => {
-      const response = await apiRequest("POST", "/api/login", data);
+      const response = await apiRequest("/api/login", "POST", data);
       return response as unknown as User;
     },
     onSuccess: (user: User) => {
       // Invalidate and refetch auth user
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      
+
       toast({
         title: "Login successful",
         description: `Welcome back, ${user.firstName || user.username}!`,
       });
-      
+
       // Redirect to dashboard
       setLocation("/");
     },
@@ -136,7 +149,8 @@ export default function Login() {
           </Form>
 
           <p className="mt-4 text-sm text-center text-muted-foreground">
-            Default credentials: <span className="font-mono">admin / admin123</span>
+            Default credentials:{" "}
+            <span className="font-mono">admin / admin123</span>
           </p>
         </CardContent>
       </Card>

@@ -19,8 +19,10 @@ import {
   taxRates, insertTaxRateSchema,
   invoiceNotes, insertInvoiceNoteSchema,
   settings, insertSettingSchema,
-  idSequences, insertIdSequenceSchema
+  idSequences, insertIdSequenceSchema,
+  notifications, reminderSettings, invoiceReminders
 } from "@shared/schema";
+import { checkOverdueInvoices } from "./services/reminderService";
 import { eq } from "drizzle-orm";
 import { isAuthenticated, verifyPassword, hashPassword, getCurrentUser } from "./auth";
 import { users, insertUserSchema } from "@shared/schema";
@@ -179,6 +181,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========== NOTIFICATIONS ==========
+  app.get("/api/notifications", isAuthenticated, async (req, res) => {
+    const allNotifications = await db
+      .select()
+      .from(notifications)
+      .orderBy(sql`${notifications.createdAt} DESC`);
+    res.json(allNotifications);
+  });
+
+  app.patch("/api/notifications/:id/read", isAuthenticated, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const [updated] = await db
+      .update(notifications)
+      .set({ isRead: true })
+      .where(eq(notifications.id, id))
+      .returning();
+    res.json(updated);
+  });
+
+  // ========== REMINDER SETTINGS ==========
+  app.get("/api/reminder-settings", isAuthenticated, async (req, res) => {
+    const settings = await db.select().from(reminderSettings);
+    res.json(settings);
+  });
+
+  app.post("/api/reminder-settings", isAuthenticated, async (req, res) => {
+    const [newSetting] = await db
+      .insert(reminderSettings)
+      .values(req.body)
+      .returning();
+    res.json(newSetting);
+  });
+
+  // Manual trigger for testing
+  app.post("/api/check-reminders", isAuthenticated, async (req, res) => {
+    const results = await checkOverdueInvoices();
+    res.json({ message: "Reminder check completed", results });
+  });
   // ========== CUSTOMERS ==========
   app.get("/api/customers", isAuthenticated, async (req, res) => {
     const allCustomers = await db.select().from(customers);
@@ -901,3 +941,5 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   return httpServer;
 }
+
+

@@ -2,7 +2,7 @@ import { db } from "./db";
 import { users } from "../shared/schema";
 import { hashPassword } from "./auth";
 import { eq } from "drizzle-orm";
-
+import { reminderSettings } from "../shared/schema";
 /**
  * Seed the database with a default admin user
  * Username: admin
@@ -33,17 +33,28 @@ async function seedAdminUser() {
       permissions: [], // Admins have all permissions by default
       isActive: true,
     });
-
+    
     console.log("✓ Admin user created successfully");
     console.log("  Username: admin");
     console.log("  Password: admin123");
     console.log("  Email: admin@company.com");
     console.log("\n⚠️  Please change the password on first login!");
+    // Seed default reminder settings
+    const existingSettings = await db.select().from(reminderSettings);
+    if (existingSettings.length === 0) {
+      await db.insert(reminderSettings).values([
+        { name: "First Reminder", daysOverdue: 7, enabled: true, emailTemplate: null },
+        { name: "Second Reminder", daysOverdue: 14, enabled: true, emailTemplate: null },
+        { name: "Final Notice", daysOverdue: 30, enabled: true, emailTemplate: null },
+      ]);
+      console.log("✓ Default reminder settings created");
+    }
   } catch (error) {
     console.error("✗ Failed to seed admin user:", error);
     throw error;
   }
 }
+
 
 // Run seed
 seedAdminUser()

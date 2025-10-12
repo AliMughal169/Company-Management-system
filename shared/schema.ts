@@ -400,5 +400,38 @@ export const insertIdSequenceSchema = createInsertSchema(idSequences).omit({
   updatedAt: true,
 });
 
+//Inovice Reminders
+export const invoiceReminders = pgTable("invoice_reminders",{
+  id: serial("id").primaryKey(),
+  invoiceId: integer("invoice_id").notNull().references(() => invoices.id),
+  daysOverdue: integer("days_overdue").notNull(),
+  sentAt: timestamp("sent_at").defaultNow().notNull(),
+  emailSent: boolean("email_sent").notNull().default(false)
+})
+export const notifications= pgTable("notifications",{
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  type: text("type").notNull(), // info, warning, error
+  isRead: boolean("is_read").notNull().default(false),
+  relatedInvoiceId: integer("related_invoice_id").references(() => invoices.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+})
+
+export const reminderSettings = pgTable("reminder_settings",{
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  daysOverdue: integer("days_overdue").notNull(),
+  enabled: boolean("enabled").notNull().default(true),
+  emailTemplate: text("email_template"),
+})
+export const insertInvoiceReminderSchema = createInsertSchema(invoiceReminders).omit({ id: true, sentAt: true });
+export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true, createdAt: true });
+export const insertReminderSettingSchema = createInsertSchema(reminderSettings).omit({ id: true });
+export type InvoiceReminder = typeof invoiceReminders.$inferSelect;
+export type Notification = typeof notifications.$inferSelect;
+export type ReminderSetting = typeof reminderSettings.$inferSelect;
+
 export type InsertIdSequence = z.infer<typeof insertIdSequenceSchema>;
 export type IdSequence = typeof idSequences.$inferSelect;
