@@ -110,6 +110,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ========== PROTECTED ROUTES (All routes below require authentication) ==========
   
+  // ========== USERS MANAGEMENT (Admin only) ==========
+  app.get("/api/users", isAuthenticated, async (req, res) => {
+    try {
+      const allUsers = await db.select().from(users);
+      // Remove password hashes from response
+      const usersWithoutPasswords = allUsers.map(({ passwordHash, ...user }) => user);
+      res.json(usersWithoutPasswords);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/users", isAuthenticated, async (req, res) => {
+    try {
+      const { password, ...userData } = req.body;
+      
+      if (!password) {
+        return res.status(400).json({ error: "Password is required" });
+      }
+
+      // Hash the password
+      const passwordHash = await hashPassword(password);
+      
+      // Create user with hashed password
+      const [newUser] = await db.insert(users).values({
+        ...userData,
+        passwordHash,
+      }).returning();
+
+      // Return user without password hash
+      const { passwordHash: _, ...userWithoutPassword } = newUser;
+      res.json({ user: userWithoutPassword, password }); // Return password so admin can share it
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/users/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = req.params.id;
+      const { password, ...userData } = req.body;
+      
+      let updateData: any = userData;
+      
+      // If password is being updated, hash it
+      if (password) {
+        updateData.passwordHash = await hashPassword(password);
+      }
+      
+      const [updated] = await db.update(users).set(updateData).where(eq(users.id, id)).returning();
+      
+      // Return user without password hash
+      const { passwordHash: _, ...userWithoutPassword } = updated;
+      res.json(userWithoutPassword);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/users/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = req.params.id;
+      await db.delete(users).where(eq(users.id, id));
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
   // ========== CUSTOMERS ==========
   app.get("/api/customers", isAuthenticated, async (req, res) => {
     const allCustomers = await db.select().from(customers);
