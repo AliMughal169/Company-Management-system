@@ -1,10 +1,45 @@
 import express, { type Request, Response, NextFunction } from "express";
+import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
+import crypto from "crypto";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { db } from "./db";
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Ensure SESSION_SECRET is set or generate a secure one
+const sessionSecret = process.env.SESSION_SECRET || (() => {
+  const generated = crypto.randomBytes(32).toString('hex');
+  console.warn("⚠️  SESSION_SECRET not set! Generated a random secret for this session.");
+  console.warn("⚠️  For production, set SESSION_SECRET environment variable to persist sessions across restarts.");
+  return generated;
+})();
+
+// Session configuration
+const PgSession = connectPgSimple(session);
+app.use(
+  session({
+    store: new PgSession({
+      conObject: {
+        connectionString: process.env.DATABASE_URL,
+      },
+      tableName: "sessions", // Match our schema table name
+      createTableIfMissing: false, // Table already exists from schema
+    }),
+    secret: sessionSecret,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+    },
+  })
+);
 
 app.use((req, res, next) => {
   const start = Date.now();

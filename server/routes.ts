@@ -60,12 +60,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Invalid username or password" });
       }
 
-      // Set session
-      req.session.userId = user.id;
+      // Regenerate session to prevent fixation attacks
+      req.session.regenerate((err) => {
+        if (err) {
+          console.error("Session regeneration error:", err);
+          return res.status(500).json({ message: "Login failed" });
+        }
 
-      // Return user data (without password hash)
-      const { passwordHash, ...userWithoutPassword } = user;
-      res.json(userWithoutPassword);
+        // Set session
+        req.session.userId = user.id;
+
+        // Return user data (without password hash)
+        const { passwordHash, ...userWithoutPassword } = user;
+        res.json(userWithoutPassword);
+      });
     } catch (error) {
       console.error("Login error:", error);
       res.status(500).json({ message: "Login failed" });

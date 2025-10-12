@@ -8,7 +8,8 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useAuth } from "@/hooks/useAuth";
-import Landing from "@/pages/landing";
+import Login from "@/pages/login";
+import type { User } from "@shared/schema";
 import Dashboard from "@/pages/dashboard";
 import Invoices from "@/pages/invoices";
 import ProformaInvoices from "@/pages/proforma-invoices";
@@ -71,26 +72,30 @@ function UserProfile() {
 
   if (!user) return null;
 
+  const userData = user as User;
+
   const getInitials = () => {
-    if (user.firstName && user.lastName) {
-      return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
+    if (userData.firstName && userData.lastName) {
+      return `${userData.firstName[0]}${userData.lastName[0]}`.toUpperCase();
     }
-    if (user.email) {
-      return user.email[0].toUpperCase();
+    if (userData.email) {
+      return userData.email[0].toUpperCase();
+    }
+    if (userData.username) {
+      return userData.username[0].toUpperCase();
     }
     return "U";
   };
 
-  const displayName = user.firstName && user.lastName
-    ? `${user.firstName} ${user.lastName}`
-    : user.email || "User";
+  const displayName = userData.firstName && userData.lastName
+    ? `${userData.firstName} ${userData.lastName}`
+    : userData.username || "User";
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="rounded-full" data-testid="button-user-menu">
           <Avatar>
-            <AvatarImage src={user.profileImageUrl || undefined} alt={displayName} />
             <AvatarFallback>{getInitials()}</AvatarFallback>
           </Avatar>
         </Button>
@@ -99,11 +104,18 @@ function UserProfile() {
         <DropdownMenuLabel>
           <div className="flex flex-col">
             <span className="font-medium">{displayName}</span>
-            {user.email && <span className="text-xs text-muted-foreground">{user.email}</span>}
+            {userData.email && <span className="text-xs text-muted-foreground">{userData.email}</span>}
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => window.location.href = "/api/logout"} data-testid="button-logout">
+        <DropdownMenuItem 
+          onClick={async () => {
+            await fetch("/api/logout", { method: "POST" });
+            queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+            window.location.href = "/";
+          }} 
+          data-testid="button-logout"
+        >
           <LogOut className="mr-2 h-4 w-4" />
           Log Out
         </DropdownMenuItem>
@@ -134,7 +146,7 @@ function AppContent({ style }: { style: { [key: string]: string } }) {
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading || !isAuthenticated) {
-    return <Landing />;
+    return <Login />;
   }
 
   return (
