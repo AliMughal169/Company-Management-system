@@ -1,4 +1,11 @@
 import { StatsCard } from "@/components/stats-card";
+
+import { Bell, RefreshCw } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
 import { DollarSign, FileText, Package, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -16,6 +23,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import { TestReminderButton } from "@/components/test-reminder-button";
 
 // todo: remove mock functionality
 const revenueData = [
@@ -41,11 +49,40 @@ const topCustomers = [
   { name: "Innovation Labs", revenue: "$28,750", orders: 12 },
 ];
 
-const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))"];
+const COLORS = [
+  "hsl(var(--chart-1))",
+  "hsl(var(--chart-2))",
+  "hsl(var(--chart-3))",
+  "hsl(var(--chart-4))",
+];
 
 export default function Dashboard() {
   return (
     <div className="space-y-8">
+      {/* Admin Test Tools */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bell className="h-5 w-5" />
+            Payment Reminder System
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">
+                Manually trigger the payment reminder checker to send
+                notifications for overdue invoices.
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                (Normally runs automatically at 9 AM daily)
+              </p>
+            </div>
+            <TestReminderButton />
+          </div>
+        </CardContent>
+      </Card>
+
       <div>
         <h1 className="text-3xl font-bold">Dashboard</h1>
         <p className="text-muted-foreground mt-1">
@@ -92,7 +129,10 @@ export default function Dashboard() {
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={revenueData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="hsl(var(--border))"
+                />
                 <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" />
                 <YAxis stroke="hsl(var(--muted-foreground))" />
                 <Tooltip
@@ -127,13 +167,18 @@ export default function Dashboard() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ category, percent }) => `${category} ${(percent * 100).toFixed(0)}%`}
+                  label={({ category, percent }) =>
+                    `${category} ${(percent * 100).toFixed(0)}%`
+                  }
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="amount"
                 >
                   {expenseData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                    />
                   ))}
                 </Pie>
                 <Tooltip
@@ -162,8 +207,12 @@ export default function Dashboard() {
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-medium">New invoice created</p>
-                  <p className="text-xs text-muted-foreground">Invoice #INV-2024-001 for Acme Corp</p>
-                  <p className="text-xs text-muted-foreground mt-1">2 hours ago</p>
+                  <p className="text-xs text-muted-foreground">
+                    Invoice #INV-2024-001 for Acme Corp
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    2 hours ago
+                  </p>
                 </div>
               </div>
               <div className="flex items-start gap-4">
@@ -172,8 +221,12 @@ export default function Dashboard() {
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-medium">Payment received</p>
-                  <p className="text-xs text-muted-foreground">$12,500 from TechStart Inc</p>
-                  <p className="text-xs text-muted-foreground mt-1">5 hours ago</p>
+                  <p className="text-xs text-muted-foreground">
+                    $12,500 from TechStart Inc
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    5 hours ago
+                  </p>
                 </div>
               </div>
               <div className="flex items-start gap-4">
@@ -182,8 +235,12 @@ export default function Dashboard() {
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-medium">Low stock alert</p>
-                  <p className="text-xs text-muted-foreground">Product XYZ-123 is running low</p>
-                  <p className="text-xs text-muted-foreground mt-1">1 day ago</p>
+                  <p className="text-xs text-muted-foreground">
+                    Product XYZ-123 is running low
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    1 day ago
+                  </p>
                 </div>
               </div>
             </div>
@@ -204,7 +261,9 @@ export default function Dashboard() {
                     </div>
                     <div>
                       <p className="text-sm font-medium">{customer.name}</p>
-                      <p className="text-xs text-muted-foreground">{customer.orders} orders</p>
+                      <p className="text-xs text-muted-foreground">
+                        {customer.orders} orders
+                      </p>
                     </div>
                   </div>
                   <p className="text-sm font-semibold">{customer.revenue}</p>

@@ -1,44 +1,71 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { db } from "./db";
-import { 
-  customers, insertCustomerSchema,
-  invoices, insertInvoiceSchema,
-  proformaInvoices, insertProformaInvoiceSchema,
-  expenses, insertExpenseSchema,
-  employees, insertEmployeeSchema,
-  stock, insertStockSchema,
-  salaries, insertSalarySchema,
-  leave, insertLeaveSchema,
-  attendance, insertAttendanceSchema,
-  performance, insertPerformanceSchema,
-  documents, insertDocumentSchema,
-  benefits, insertBenefitSchema,
-  training, insertTrainingSchema,
-  exit, insertExitSchema,
-  taxRates, insertTaxRateSchema,
-  invoiceNotes, insertInvoiceNoteSchema,
-  settings, insertSettingSchema,
-  idSequences, insertIdSequenceSchema,
-  notifications, reminderSettings, invoiceReminders
+import {
+  customers,
+  insertCustomerSchema,
+  invoices,
+  insertInvoiceSchema,
+  proformaInvoices,
+  insertProformaInvoiceSchema,
+  expenses,
+  insertExpenseSchema,
+  employees,
+  insertEmployeeSchema,
+  stock,
+  insertStockSchema,
+  salaries,
+  insertSalarySchema,
+  leave,
+  insertLeaveSchema,
+  attendance,
+  insertAttendanceSchema,
+  performance,
+  insertPerformanceSchema,
+  documents,
+  insertDocumentSchema,
+  benefits,
+  insertBenefitSchema,
+  training,
+  insertTrainingSchema,
+  exit,
+  insertExitSchema,
+  taxRates,
+  insertTaxRateSchema,
+  invoiceNotes,
+  insertInvoiceNoteSchema,
+  settings,
+  insertSettingSchema,
+  idSequences,
+  insertIdSequenceSchema,
+  notifications,
+  reminderSettings,
+  invoiceReminders,
 } from "@shared/schema";
 import { checkOverdueInvoices } from "./services/reminderService";
-import { eq } from "drizzle-orm";
-import { isAuthenticated, verifyPassword, hashPassword, getCurrentUser } from "./auth";
+import { eq, and, lt, sql } from "drizzle-orm";
+import {
+  isAuthenticated,
+  verifyPassword,
+  hashPassword,
+  getCurrentUser,
+} from "./auth";
+
 import { users, insertUserSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  
   // ========== AUTH ROUTES (PUBLIC) ==========
-  
+
   // Login with username/password
-  app.post('/api/login', async (req, res) => {
+  app.post("/api/login", async (req, res) => {
     try {
       const { username, password } = req.body;
-      
+
       if (!username || !password) {
-        return res.status(400).json({ message: "Username and password are required" });
+        return res
+          .status(400)
+          .json({ message: "Username and password are required" });
       }
 
       // Find user by username
@@ -47,7 +74,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       if (!user) {
-        return res.status(401).json({ message: "Invalid username or password" });
+        return res
+          .status(401)
+          .json({ message: "Invalid username or password" });
       }
 
       // Check if user is active
@@ -57,9 +86,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Verify password
       const isValidPassword = await verifyPassword(password, user.passwordHash);
-      
+
       if (!isValidPassword) {
-        return res.status(401).json({ message: "Invalid username or password" });
+        return res
+          .status(401)
+          .json({ message: "Invalid username or password" });
       }
 
       // Regenerate session to prevent fixation attacks
@@ -83,24 +114,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Logout
-  app.post('/api/logout', (req, res) => {
+  app.post("/api/logout", (req, res) => {
     req.session.destroy((err) => {
       if (err) {
         return res.status(500).json({ message: "Logout failed" });
       }
-      res.clearCookie('connect.sid');
+      res.clearCookie("connect.sid");
       res.json({ message: "Logged out successfully" });
     });
   });
 
   // Get current user (protected)
-  app.get('/api/auth/user', isAuthenticated, async (req, res) => {
+  app.get("/api/auth/user", isAuthenticated, async (req, res) => {
     try {
       const user = await getCurrentUser(req);
       if (!user) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-      
+
       // Return user without password hash
       const { passwordHash, ...userWithoutPassword } = user;
       res.json(userWithoutPassword);
@@ -111,13 +142,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ========== PROTECTED ROUTES (All routes below require authentication) ==========
-  
+
   // ========== USERS MANAGEMENT (Admin only) ==========
   app.get("/api/users", isAuthenticated, async (req, res) => {
     try {
       const allUsers = await db.select().from(users);
       // Remove password hashes from response
-      const usersWithoutPasswords = allUsers.map(({ passwordHash, ...user }) => user);
+      const usersWithoutPasswords = allUsers.map(
+        ({ passwordHash, ...user }) => user,
+      );
       res.json(usersWithoutPasswords);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -127,19 +160,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/users", isAuthenticated, async (req, res) => {
     try {
       const { password, ...userData } = req.body;
-      
+
       if (!password) {
         return res.status(400).json({ error: "Password is required" });
       }
 
       // Hash the password
       const passwordHash = await hashPassword(password);
-      
+
       // Create user with hashed password
-      const [newUser] = await db.insert(users).values({
-        ...userData,
-        passwordHash,
-      }).returning();
+      const [newUser] = await db
+        .insert(users)
+        .values({
+          ...userData,
+          passwordHash,
+        })
+        .returning();
 
       // Return user without password hash
       const { passwordHash: _, ...userWithoutPassword } = newUser;
@@ -153,16 +189,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = req.params.id;
       const { password, ...userData } = req.body;
-      
+
       let updateData: any = userData;
-      
+
       // If password is being updated, hash it
       if (password) {
         updateData.passwordHash = await hashPassword(password);
       }
-      
-      const [updated] = await db.update(users).set(updateData).where(eq(users.id, id)).returning();
-      
+
+      const [updated] = await db
+        .update(users)
+        .set(updateData)
+        .where(eq(users.id, id))
+        .returning();
+
       // Return user without password hash
       const { passwordHash: _, ...userWithoutPassword } = updated;
       res.json(userWithoutPassword);
@@ -190,15 +230,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(allNotifications);
   });
 
-  app.patch("/api/notifications/:id/read", isAuthenticated, async (req, res) => {
-    const id = parseInt(req.params.id);
-    const [updated] = await db
-      .update(notifications)
-      .set({ isRead: true })
-      .where(eq(notifications.id, id))
-      .returning();
-    res.json(updated);
-  });
+  app.patch(
+    "/api/notifications/:id/read",
+    isAuthenticated,
+    async (req, res) => {
+      const id = parseInt(req.params.id);
+      const [updated] = await db
+        .update(notifications)
+        .set({ isRead: true })
+        .where(eq(notifications.id, id))
+        .returning();
+      res.json(updated);
+    },
+  );
 
   // ========== REMINDER SETTINGS ==========
   app.get("/api/reminder-settings", isAuthenticated, async (req, res) => {
@@ -228,7 +272,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/customers", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertCustomerSchema.parse(req.body);
-      const [newCustomer] = await db.insert(customers).values(validatedData).returning();
+      const [newCustomer] = await db
+        .insert(customers)
+        .values(validatedData)
+        .returning();
       res.json(newCustomer);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -239,7 +286,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const validatedData = insertCustomerSchema.partial().parse(req.body);
-      const [updated] = await db.update(customers).set(validatedData).where(eq(customers.id, id)).returning();
+      const [updated] = await db
+        .update(customers)
+        .set(validatedData)
+        .where(eq(customers.id, id))
+        .returning();
       res.json(updated);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -265,7 +316,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/invoices", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertInvoiceSchema.parse(req.body);
-      const [newInvoice] = await db.insert(invoices).values(validatedData).returning();
+      const [newInvoice] = await db
+        .insert(invoices)
+        .values(validatedData)
+        .returning();
       res.json(newInvoice);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -276,7 +330,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const validatedData = insertInvoiceSchema.partial().parse(req.body);
-      const [updated] = await db.update(invoices).set(validatedData).where(eq(invoices.id, id)).returning();
+      const [updated] = await db
+        .update(invoices)
+        .set(validatedData)
+        .where(eq(invoices.id, id))
+        .returning();
       res.json(updated);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -302,7 +360,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/proforma-invoices", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertProformaInvoiceSchema.parse(req.body);
-      const [newProforma] = await db.insert(proformaInvoices).values(validatedData).returning();
+      const [newProforma] = await db
+        .insert(proformaInvoices)
+        .values(validatedData)
+        .returning();
       res.json(newProforma);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -312,23 +373,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/proforma-invoices/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const validatedData = insertProformaInvoiceSchema.partial().parse(req.body);
-      const [updated] = await db.update(proformaInvoices).set(validatedData).where(eq(proformaInvoices.id, id)).returning();
+      const validatedData = insertProformaInvoiceSchema
+        .partial()
+        .parse(req.body);
+      const [updated] = await db
+        .update(proformaInvoices)
+        .set(validatedData)
+        .where(eq(proformaInvoices.id, id))
+        .returning();
       res.json(updated);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
   });
 
-  app.delete("/api/proforma-invoices/:id", isAuthenticated, async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      await db.delete(proformaInvoices).where(eq(proformaInvoices.id, id));
-      res.json({ success: true });
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
-  });
+  app.delete(
+    "/api/proforma-invoices/:id",
+    isAuthenticated,
+    async (req, res) => {
+      try {
+        const id = parseInt(req.params.id);
+        await db.delete(proformaInvoices).where(eq(proformaInvoices.id, id));
+        res.json({ success: true });
+      } catch (error: any) {
+        res.status(400).json({ error: error.message });
+      }
+    },
+  );
 
   // ========== EXPENSES ==========
   app.get("/api/expenses", isAuthenticated, async (req, res) => {
@@ -339,7 +410,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/expenses", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertExpenseSchema.parse(req.body);
-      const [newExpense] = await db.insert(expenses).values(validatedData).returning();
+      const [newExpense] = await db
+        .insert(expenses)
+        .values(validatedData)
+        .returning();
       res.json(newExpense);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -350,7 +424,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const validatedData = insertExpenseSchema.partial().parse(req.body);
-      const [updated] = await db.update(expenses).set(validatedData).where(eq(expenses.id, id)).returning();
+      const [updated] = await db
+        .update(expenses)
+        .set(validatedData)
+        .where(eq(expenses.id, id))
+        .returning();
       res.json(updated);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -376,7 +454,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/employees", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertEmployeeSchema.parse(req.body);
-      const [newEmployee] = await db.insert(employees).values(validatedData).returning();
+      const [newEmployee] = await db
+        .insert(employees)
+        .values(validatedData)
+        .returning();
       res.json(newEmployee);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -387,7 +468,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const validatedData = insertEmployeeSchema.partial().parse(req.body);
-      const [updated] = await db.update(employees).set(validatedData).where(eq(employees.id, id)).returning();
+      const [updated] = await db
+        .update(employees)
+        .set(validatedData)
+        .where(eq(employees.id, id))
+        .returning();
       res.json(updated);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -413,7 +498,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/stock", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertStockSchema.parse(req.body);
-      const [newStock] = await db.insert(stock).values(validatedData).returning();
+      const [newStock] = await db
+        .insert(stock)
+        .values(validatedData)
+        .returning();
       res.json(newStock);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -424,7 +512,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const validatedData = insertStockSchema.partial().parse(req.body);
-      const [updated] = await db.update(stock).set(validatedData).where(eq(stock.id, id)).returning();
+      const [updated] = await db
+        .update(stock)
+        .set(validatedData)
+        .where(eq(stock.id, id))
+        .returning();
       res.json(updated);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -450,7 +542,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/salaries", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertSalarySchema.parse(req.body);
-      const [newSalary] = await db.insert(salaries).values(validatedData).returning();
+      const [newSalary] = await db
+        .insert(salaries)
+        .values(validatedData)
+        .returning();
       res.json(newSalary);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -461,7 +556,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const validatedData = insertSalarySchema.partial().parse(req.body);
-      const [updated] = await db.update(salaries).set(validatedData).where(eq(salaries.id, id)).returning();
+      const [updated] = await db
+        .update(salaries)
+        .set(validatedData)
+        .where(eq(salaries.id, id))
+        .returning();
       res.json(updated);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -487,7 +586,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/leave", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertLeaveSchema.parse(req.body);
-      const [newLeave] = await db.insert(leave).values(validatedData).returning();
+      const [newLeave] = await db
+        .insert(leave)
+        .values(validatedData)
+        .returning();
       res.json(newLeave);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -498,7 +600,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const validatedData = insertLeaveSchema.partial().parse(req.body);
-      const [updated] = await db.update(leave).set(validatedData).where(eq(leave.id, id)).returning();
+      const [updated] = await db
+        .update(leave)
+        .set(validatedData)
+        .where(eq(leave.id, id))
+        .returning();
       res.json(updated);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -524,7 +630,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/attendance", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertAttendanceSchema.parse(req.body);
-      const [newAttendance] = await db.insert(attendance).values(validatedData).returning();
+      const [newAttendance] = await db
+        .insert(attendance)
+        .values(validatedData)
+        .returning();
       res.json(newAttendance);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -535,7 +644,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const validatedData = insertAttendanceSchema.partial().parse(req.body);
-      const [updated] = await db.update(attendance).set(validatedData).where(eq(attendance.id, id)).returning();
+      const [updated] = await db
+        .update(attendance)
+        .set(validatedData)
+        .where(eq(attendance.id, id))
+        .returning();
       res.json(updated);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -561,7 +674,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/performance", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertPerformanceSchema.parse(req.body);
-      const [newPerformance] = await db.insert(performance).values(validatedData).returning();
+      const [newPerformance] = await db
+        .insert(performance)
+        .values(validatedData)
+        .returning();
       res.json(newPerformance);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -572,7 +688,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const validatedData = insertPerformanceSchema.partial().parse(req.body);
-      const [updated] = await db.update(performance).set(validatedData).where(eq(performance.id, id)).returning();
+      const [updated] = await db
+        .update(performance)
+        .set(validatedData)
+        .where(eq(performance.id, id))
+        .returning();
       res.json(updated);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -598,7 +718,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/documents", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertDocumentSchema.parse(req.body);
-      const [newDocument] = await db.insert(documents).values(validatedData).returning();
+      const [newDocument] = await db
+        .insert(documents)
+        .values(validatedData)
+        .returning();
       res.json(newDocument);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -609,7 +732,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const validatedData = insertDocumentSchema.partial().parse(req.body);
-      const [updated] = await db.update(documents).set(validatedData).where(eq(documents.id, id)).returning();
+      const [updated] = await db
+        .update(documents)
+        .set(validatedData)
+        .where(eq(documents.id, id))
+        .returning();
       res.json(updated);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -635,7 +762,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/benefits", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertBenefitSchema.parse(req.body);
-      const [newBenefit] = await db.insert(benefits).values(validatedData).returning();
+      const [newBenefit] = await db
+        .insert(benefits)
+        .values(validatedData)
+        .returning();
       res.json(newBenefit);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -646,7 +776,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const validatedData = insertBenefitSchema.partial().parse(req.body);
-      const [updated] = await db.update(benefits).set(validatedData).where(eq(benefits.id, id)).returning();
+      const [updated] = await db
+        .update(benefits)
+        .set(validatedData)
+        .where(eq(benefits.id, id))
+        .returning();
       res.json(updated);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -672,7 +806,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/training", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertTrainingSchema.parse(req.body);
-      const [newTraining] = await db.insert(training).values(validatedData).returning();
+      const [newTraining] = await db
+        .insert(training)
+        .values(validatedData)
+        .returning();
       res.json(newTraining);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -683,7 +820,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const validatedData = insertTrainingSchema.partial().parse(req.body);
-      const [updated] = await db.update(training).set(validatedData).where(eq(training.id, id)).returning();
+      const [updated] = await db
+        .update(training)
+        .set(validatedData)
+        .where(eq(training.id, id))
+        .returning();
       res.json(updated);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -720,7 +861,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const validatedData = insertExitSchema.partial().parse(req.body);
-      const [updated] = await db.update(exit).set(validatedData).where(eq(exit.id, id)).returning();
+      const [updated] = await db
+        .update(exit)
+        .set(validatedData)
+        .where(eq(exit.id, id))
+        .returning();
       res.json(updated);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -746,7 +891,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/tax-rates", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertTaxRateSchema.parse(req.body);
-      const [newTaxRate] = await db.insert(taxRates).values(validatedData).returning();
+      const [newTaxRate] = await db
+        .insert(taxRates)
+        .values(validatedData)
+        .returning();
       res.json(newTaxRate);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -757,7 +905,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const validatedData = insertTaxRateSchema.partial().parse(req.body);
-      const [updated] = await db.update(taxRates).set(validatedData).where(eq(taxRates.id, id)).returning();
+      const [updated] = await db
+        .update(taxRates)
+        .set(validatedData)
+        .where(eq(taxRates.id, id))
+        .returning();
       res.json(updated);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -783,7 +935,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/invoice-notes", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertInvoiceNoteSchema.parse(req.body);
-      const [newNote] = await db.insert(invoiceNotes).values(validatedData).returning();
+      const [newNote] = await db
+        .insert(invoiceNotes)
+        .values(validatedData)
+        .returning();
       res.json(newNote);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -794,7 +949,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const validatedData = insertInvoiceNoteSchema.partial().parse(req.body);
-      const [updated] = await db.update(invoiceNotes).set(validatedData).where(eq(invoiceNotes.id, id)).returning();
+      const [updated] = await db
+        .update(invoiceNotes)
+        .set(validatedData)
+        .where(eq(invoiceNotes.id, id))
+        .returning();
       res.json(updated);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -818,14 +977,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/settings/:key", isAuthenticated, async (req, res) => {
-    const [setting] = await db.select().from(settings).where(eq(settings.key, req.params.key));
+    const [setting] = await db
+      .select()
+      .from(settings)
+      .where(eq(settings.key, req.params.key));
     res.json(setting || null);
   });
 
   app.post("/api/settings", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertSettingSchema.parse(req.body);
-      const [newSetting] = await db.insert(settings).values(validatedData).returning();
+      const [newSetting] = await db
+        .insert(settings)
+        .values(validatedData)
+        .returning();
       res.json(newSetting);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -835,7 +1000,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/settings/:key", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertSettingSchema.partial().parse(req.body);
-      const [updated] = await db.update(settings).set(validatedData).where(eq(settings.key, req.params.key)).returning();
+      const [updated] = await db
+        .update(settings)
+        .set(validatedData)
+        .where(eq(settings.key, req.params.key))
+        .returning();
       res.json(updated);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -849,14 +1018,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/id-sequences/:module", isAuthenticated, async (req, res) => {
-    const [sequence] = await db.select().from(idSequences).where(eq(idSequences.module, req.params.module));
+    const [sequence] = await db
+      .select()
+      .from(idSequences)
+      .where(eq(idSequences.module, req.params.module));
     res.json(sequence || null);
   });
 
   app.post("/api/id-sequences", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertIdSequenceSchema.parse(req.body);
-      const [newSequence] = await db.insert(idSequences).values(validatedData).returning();
+      const [newSequence] = await db
+        .insert(idSequences)
+        .values(validatedData)
+        .returning();
       res.json(newSequence);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -866,7 +1041,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/id-sequences/:module", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertIdSequenceSchema.partial().parse(req.body);
-      const [updated] = await db.update(idSequences).set(validatedData).where(eq(idSequences.module, req.params.module)).returning();
+      const [updated] = await db
+        .update(idSequences)
+        .set(validatedData)
+        .where(eq(idSequences.module, req.params.module))
+        .returning();
       res.json(updated);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -874,72 +1053,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Generate next ID for a module
-  app.post("/api/id-sequences/:module/next", isAuthenticated, async (req, res) => {
-    try {
-      const module = req.params.module;
-      const [sequence] = await db.select().from(idSequences).where(eq(idSequences.module, module));
-      
-      if (!sequence) {
-        return res.status(404).json({ error: "Sequence not found" });
+  app.post(
+    "/api/id-sequences/:module/next",
+    isAuthenticated,
+    async (req, res) => {
+      try {
+        const module = req.params.module;
+        const [sequence] = await db
+          .select()
+          .from(idSequences)
+          .where(eq(idSequences.module, module));
+
+        if (!sequence) {
+          return res.status(404).json({ error: "Sequence not found" });
+        }
+
+        const nextId = `${sequence.prefix}${String(sequence.nextNumber).padStart(4, "0")}`;
+
+        // Increment the sequence
+        await db
+          .update(idSequences)
+          .set({ nextNumber: sequence.nextNumber + 1 })
+          .where(eq(idSequences.module, module));
+
+        res.json({ id: nextId });
+      } catch (error: any) {
+        res.status(400).json({ error: error.message });
       }
-
-      const nextId = `${sequence.prefix}${String(sequence.nextNumber).padStart(4, '0')}`;
-      
-      // Increment the sequence
-      await db.update(idSequences)
-        .set({ nextNumber: sequence.nextNumber + 1 })
-        .where(eq(idSequences.module, module));
-
-      res.json({ id: nextId });
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
-  });
+    },
+  );
 
   // Get next ID preview without incrementing
-  app.get("/api/id-sequences/:module/preview", isAuthenticated, async (req, res) => {
-    try {
-      const module = req.params.module;
-      const [sequence] = await db.select().from(idSequences).where(eq(idSequences.module, module));
-      
-      if (!sequence) {
-        return res.status(404).json({ error: "Sequence not found" });
-      }
+  app.get(
+    "/api/id-sequences/:module/preview",
+    isAuthenticated,
+    async (req, res) => {
+      try {
+        const module = req.params.module;
+        const [sequence] = await db
+          .select()
+          .from(idSequences)
+          .where(eq(idSequences.module, module));
 
-      const nextId = `${sequence.prefix}${String(sequence.nextNumber).padStart(4, '0')}`;
-      res.json({ id: nextId });
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
-  });
+        if (!sequence) {
+          return res.status(404).json({ error: "Sequence not found" });
+        }
+
+        const nextId = `${sequence.prefix}${String(sequence.nextNumber).padStart(4, "0")}`;
+        res.json({ id: nextId });
+      } catch (error: any) {
+        res.status(400).json({ error: error.message });
+      }
+    },
+  );
 
   // Initialize default ID sequences if they don't exist
-  app.post("/api/id-sequences/initialize", isAuthenticated, async (req, res) => {
-    try {
-      const defaultSequences = [
-        { module: 'invoice', prefix: 'INV-', nextNumber: 1 },
-        { module: 'proforma', prefix: 'PF-', nextNumber: 1 },
-        { module: 'employee', prefix: 'EMP-', nextNumber: 1 },
-        { module: 'expense', prefix: 'EXP-', nextNumber: 1 },
-        { module: 'customer', prefix: 'CUST-', nextNumber: 1 },
-        { module: 'stock', prefix: 'STK-', nextNumber: 1 },
-      ];
+  app.post(
+    "/api/id-sequences/initialize",
+    isAuthenticated,
+    async (req, res) => {
+      try {
+        const defaultSequences = [
+          { module: "invoice", prefix: "INV-", nextNumber: 1 },
+          { module: "proforma", prefix: "PF-", nextNumber: 1 },
+          { module: "employee", prefix: "EMP-", nextNumber: 1 },
+          { module: "expense", prefix: "EXP-", nextNumber: 1 },
+          { module: "customer", prefix: "CUST-", nextNumber: 1 },
+          { module: "stock", prefix: "STK-", nextNumber: 1 },
+        ];
 
-      for (const seq of defaultSequences) {
-        const existing = await db.select().from(idSequences).where(eq(idSequences.module, seq.module));
-        if (existing.length === 0) {
-          await db.insert(idSequences).values(seq);
+        for (const seq of defaultSequences) {
+          const existing = await db
+            .select()
+            .from(idSequences)
+            .where(eq(idSequences.module, seq.module));
+          if (existing.length === 0) {
+            await db.insert(idSequences).values(seq);
+          }
         }
-      }
 
-      res.json({ success: true, message: "Default sequences initialized" });
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
-  });
+        res.json({ success: true, message: "Default sequences initialized" });
+      } catch (error: any) {
+        res.status(400).json({ error: error.message });
+      }
+    },
+  );
 
   const httpServer = createServer(app);
   return httpServer;
 }
-
-

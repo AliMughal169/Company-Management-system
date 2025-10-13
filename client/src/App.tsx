@@ -40,7 +40,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { User as UserIcon, LogOut } from "lucide-react";
-
+import { NotificationBell } from "@/components/notification-bell";
 function Router() {
   return (
     <Switch>
@@ -157,6 +157,7 @@ function AppContent({ style }: { style: { [key: string]: string } }) {
           <header className="flex items-center justify-between gap-4 p-4 border-b border-border">
             <SidebarTrigger data-testid="button-sidebar-toggle" />
             <div className="flex items-center gap-2">
+              <NotificationBell />
               <ThemeToggle />
               <UserProfile />
             </div>
