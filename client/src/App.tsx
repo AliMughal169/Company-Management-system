@@ -39,6 +39,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { AIChatWidget } from "@/components/ai-chat-widget";
 import { User as UserIcon, LogOut } from "lucide-react";
 import { NotificationBell } from "@/components/notification-bell";
 function Router() {
@@ -87,14 +88,20 @@ function UserProfile() {
     return "U";
   };
 
-  const displayName = userData.firstName && userData.lastName
-    ? `${userData.firstName} ${userData.lastName}`
-    : userData.username || "User";
+  const displayName =
+    userData.firstName && userData.lastName
+      ? `${userData.firstName} ${userData.lastName}`
+      : userData.username || "User";
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="rounded-full" data-testid="button-user-menu">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="rounded-full"
+          data-testid="button-user-menu"
+        >
           <Avatar>
             <AvatarFallback>{getInitials()}</AvatarFallback>
           </Avatar>
@@ -104,16 +111,20 @@ function UserProfile() {
         <DropdownMenuLabel>
           <div className="flex flex-col">
             <span className="font-medium">{displayName}</span>
-            {userData.email && <span className="text-xs text-muted-foreground">{userData.email}</span>}
+            {userData.email && (
+              <span className="text-xs text-muted-foreground">
+                {userData.email}
+              </span>
+            )}
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem 
+        <DropdownMenuItem
           onClick={async () => {
             await fetch("/api/logout", { method: "POST" });
             queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
             window.location.href = "/";
-          }} 
+          }}
           data-testid="button-logout"
         >
           <LogOut className="mr-2 h-4 w-4" />
@@ -167,6 +178,7 @@ function AppContent({ style }: { style: { [key: string]: string } }) {
           </main>
         </div>
       </div>
+      <AIChatWidget />
     </SidebarProvider>
   );
 }

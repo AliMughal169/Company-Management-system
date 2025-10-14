@@ -1138,7 +1138,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     },
   );
+  // ========== AI CHAT ==========
+  app.post("/api/chat/message", isAuthenticated, async (req, res) => {
+    try {
+      const { message } = req.body;
 
+      if (!message || typeof message !== "string") {
+        return res.status(400).json({ error: "Message is required" });
+      }
+
+      const { businessAgent } = await import("./ai/agent");
+
+      // Generate response from AI agent
+      const response = await businessAgent.generate(message);
+
+      res.json({
+        success: true,
+        response: response.text,
+      });
+    } catch (error: any) {
+      console.error("AI Chat Error:", error);
+      res.status(500).json({ 
+        success: false, 
+        error: error.message || "Failed to process message" 
+      });
+    }
+  });
   const httpServer = createServer(app);
   return httpServer;
 }

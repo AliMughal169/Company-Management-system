@@ -34,8 +34,12 @@ import {
   SidebarMenuSubItem,
   SidebarMenuSubButton,
 } from "@/components/ui/sidebar";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useLocation } from "wouter";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { useLocation, Link } from "wouter";
 
 const mainMenuItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -95,12 +99,12 @@ export function AppSidebar() {
                     <SidebarMenuButton
                       asChild
                       isActive={isActive}
-                      data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
+                      data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
                     >
-                      <a href={item.url}>
+                      <Link href={item.url}>
                         <item.icon className="h-4 w-4" />
                         <span>{item.title}</span>
-                      </a>
+                      </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
@@ -112,7 +116,10 @@ export function AppSidebar() {
         <Collapsible defaultOpen className="group/collapsible">
           <SidebarGroup>
             <SidebarGroupLabel asChild>
-              <CollapsibleTrigger className="flex w-full items-center justify-between" data-testid="nav-hr-management-toggle">
+              <CollapsibleTrigger
+                className="flex w-full items-center justify-between"
+                data-testid="nav-hr-management-toggle"
+              >
                 HR Management
                 <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
               </CollapsibleTrigger>
@@ -127,12 +134,12 @@ export function AppSidebar() {
                         <SidebarMenuButton
                           asChild
                           isActive={isActive}
-                          data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
+                          data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
                         >
-                          <a href={item.url}>
+                          <Link href={item.url}>
                             <item.icon className="h-4 w-4" />
                             <span>{item.title}</span>
-                          </a>
+                          </Link>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     );
@@ -146,7 +153,10 @@ export function AppSidebar() {
         <Collapsible defaultOpen className="group/collapsible">
           <SidebarGroup>
             <SidebarGroupLabel asChild>
-              <CollapsibleTrigger className="flex w-full items-center justify-between" data-testid="nav-payroll-benefits-toggle">
+              <CollapsibleTrigger
+                className="flex w-full items-center justify-between"
+                data-testid="nav-payroll-benefits-toggle"
+              >
                 Payroll & Benefits
                 <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
               </CollapsibleTrigger>
@@ -161,12 +171,12 @@ export function AppSidebar() {
                         <SidebarMenuButton
                           asChild
                           isActive={isActive}
-                          data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
+                          data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
                         >
-                          <a href={item.url}>
+                          <Link href={item.url}>
                             <item.icon className="h-4 w-4" />
                             <span>{item.title}</span>
-                          </a>
+                          </Link>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     );
@@ -188,12 +198,12 @@ export function AppSidebar() {
                     <SidebarMenuButton
                       asChild
                       isActive={isActive}
-                      data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
+                      data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
                     >
-                      <a href={item.url}>
+                      <Link href={item.url}>
                         <item.icon className="h-4 w-4" />
                         <span>{item.title}</span>
-                      </a>
+                      </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
