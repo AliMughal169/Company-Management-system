@@ -433,5 +433,26 @@ export type InvoiceReminder = typeof invoiceReminders.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
 export type ReminderSetting = typeof reminderSettings.$inferSelect;
 
+
+// Knowledge Base Documents (RAG System)
+export const knowledgeBaseDocuments = pgTable("knowledge_base_documents", {
+  id: serial("id").primaryKey(),
+  filename: varchar("filename", { length: 255 }).notNull(),
+  contentType: varchar("content_type", { length: 100 }).notNull(),
+  fileSize: integer("file_size").notNull(), // in bytes
+  uploadedBy: varchar("uploaded_by").notNull().references(() => users.id),
+  uploadDate: timestamp("upload_date").defaultNow().notNull(),
+  status: varchar("status", { length: 50 }).notNull().default("processing"), // processing, completed, failed
+  chunksCount: integer("chunks_count").default(0), // number of chunks created
+  error: text("error"), // error message if processing failed
+});
+
+export type KnowledgeBaseDocument = typeof knowledgeBaseDocuments.$inferSelect;
+export type InsertKnowledgeBaseDocument = typeof knowledgeBaseDocuments.$inferInsert;
+
+export const insertKnowledgeBaseDocumentSchema = createInsertSchema(knowledgeBaseDocuments).omit({
+  id: true,
+  uploadDate: true,
+});
 export type InsertIdSequence = z.infer<typeof insertIdSequenceSchema>;
 export type IdSequence = typeof idSequences.$inferSelect;
