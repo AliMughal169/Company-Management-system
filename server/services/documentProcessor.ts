@@ -11,11 +11,8 @@ const require = createRequire(import.meta.url);
 // Extract text from PDF
 export async function extractTextFromPDF(buffer: Buffer): Promise<string> {
   console.log("📄 Extracting text from PDF...");
-  const pdfParseModule = require("pdf-parse");
-  console.log("Module type:", typeof pdfParseModule);
-  console.log("Module keys:", Object.keys(pdfParseModule));
-  const pdfParse = pdfParseModule.default || pdfParseModule;
-  const data = await pdfParse(buffer);
+  const { PDFParse } = require("pdf-parse");
+  const data = await PDFParse(buffer);
   console.log("✅ Extracted text from PDF, length:", data.text.length);
   return data.text;
 }
