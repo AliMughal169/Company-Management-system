@@ -12,7 +12,7 @@ const require = createRequire(import.meta.url);
 export async function extractTextFromPDF(buffer: Buffer): Promise<string> {
   console.log("📄 Extracting text from PDF...");
   const { PDFParse } = require("pdf-parse");
-  const data = await PDFParse(buffer);
+  const data = await new PDFParse(buffer);
   console.log("✅ Extracted text from PDF, length:", data.text.length);
   return data.text;
 }
