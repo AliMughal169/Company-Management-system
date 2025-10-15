@@ -42,6 +42,9 @@ import {
 import { AIChatWidget } from "@/components/ai-chat-widget";
 import { User as UserIcon, LogOut } from "lucide-react";
 import { NotificationBell } from "@/components/notification-bell";
+
+import KnowledgeBase from "@/pages/knowledge-base";
+
 function Router() {
   return (
     <Switch>
@@ -63,6 +66,7 @@ function Router() {
       <Route path="/training" component={Training} />
       <Route path="/exit" component={ExitManagement} />
       <Route path="/settings" component={Settings} />
+      <Route path="/knowledge-base" component={KnowledgeBase} />
       <Route component={NotFound} />
     </Switch>
   );

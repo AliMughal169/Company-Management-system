@@ -43,7 +43,7 @@ import {
   invoiceReminders,
 } from "@shared/schema";
 import { checkOverdueInvoices } from "./services/reminderService";
-import { eq, and, lt, sql } from "drizzle-orm";
+import { eq, and, lt, sql, desc } from "drizzle-orm";
 import {
   isAuthenticated,
   verifyPassword,
@@ -53,6 +53,14 @@ import {
 
 import { users, insertUserSchema } from "@shared/schema";
 import { z } from "zod";
+
+import multer from "multer";
+import {
+  knowledgeBaseDocuments,
+  insertKnowledgeBaseDocumentSchema,
+} from "@shared/schema";
+import { processDocument } from "./services/documentProcessor";
+import { deleteDocument } from "./services/pineconeService";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // ========== AUTH ROUTES (PUBLIC) ==========
@@ -1158,12 +1166,123 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error("AI Chat Error:", error);
-      res.status(500).json({ 
-        success: false, 
-        error: error.message || "Failed to process message" 
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to process message",
       });
     }
   });
+
+  // Configure multer for file uploads (store in memory)
+  const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+      fileSize: 10 * 1024 * 1024, // 10MB max file size
+    },
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = [
+        "application/pdf",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "text/plain",
+      ];
+      console.log("file recieved in multer");
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(
+          new Error(
+            "Invalid file type. Only PDF, DOCX, and TXT files are allowed.",
+          ),
+        );
+      }
+    },
+  });
+
+  // Upload knowledge base document
+  app.post(
+    "/api/knowledge-base/upload",
+    isAuthenticated,
+    upload.single("file"),
+    async (req, res) => {
+      try {
+        console.log("=== UPLOAD START ===");
+        console.log("File:", req.file?.originalname);
+        console.log("User ID:", req.session.userId);
+        if (!req.file) {
+          return res.status(400).json({ error: "No file uploaded" });
+        }
+        console.log("About to insert into database...");
+        // Create document record in database
+        const [document] = await db
+          .insert(knowledgeBaseDocuments)
+          .values({
+            filename: req.file.originalname,
+            contentType: req.file.mimetype,
+            fileSize: req.file.size,
+            uploadedBy: req.session.userId!,
+            status: "processing",
+          })
+          .returning();
+        console.log("Database insert successful! Document ID:", document.id);
+        // Process document asynchronously (don't wait for completion)
+        processDocument(document.id, req.file.buffer, req.file.mimetype).catch(
+          (error) => {
+            console.error("Background processing error:", error);
+          },
+        );
+        console.log("Sending response...");
+        res.json({
+          success: true,
+          message: "Document uploaded and processing started",
+          document,
+        });
+      } catch (error: any) {
+        console.error("Upload error:", error);
+        res.status(500).json({ error: error.message });
+      }
+    },
+  );
+
+  // Get all knowledge base documents
+  app.get(
+    "/api/knowledge-base/documents",
+    isAuthenticated,
+    async (req, res) => {
+      try {
+        const documents = await db
+          .select()
+          .from(knowledgeBaseDocuments)
+          .orderBy(desc(knowledgeBaseDocuments.uploadDate));
+
+        res.json(documents);
+      } catch (error: any) {
+        res.status(500).json({ error: error.message });
+      }
+    },
+  );
+
+  // Delete knowledge base document
+  app.delete(
+    "/api/knowledge-base/documents/:id",
+    isAuthenticated,
+    async (req, res) => {
+      try {
+        const documentId = parseInt(req.params.id);
+
+        // Delete from Pinecone first
+        await deleteDocument(documentId);
+
+        // Delete from database
+        await db
+          .delete(knowledgeBaseDocuments)
+          .where(eq(knowledgeBaseDocuments.id, documentId));
+
+        res.json({ success: true });
+      } catch (error: any) {
+        res.status(500).json({ error: error.message });
+      }
+    },
+  );
   const httpServer = createServer(app);
   return httpServer;
 }

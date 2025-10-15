@@ -4,6 +4,9 @@ import { eq, and, sql, gte, lte, like, desc } from "drizzle-orm";
 import { createTool } from "@mastra/core";
 import { z } from "zod";
 
+// for RAG system using pinecone
+import { searchDocuments } from "../services/pineconeService";
+
 // Tool 1: Query Invoices
 export const queryInvoicesTool = createTool({
   id: "query-invoices",
@@ -201,6 +204,55 @@ export const queryEmployeesTool = createTool({
   },
 });
 
+// Query Knowledge Base (RAG)
+export const queryKnowledgeBaseTool = createTool({
+  id: "query-knowledge-base",
+  description: `Search through uploaded company documents, policies, procedures, and knowledge base.
+Use this when users ask about:
+- Company policies (leave, benefits, procedures)
+- HR guidelines and employee handbook information
+- Standard operating procedures (SOPs)
+- Any information that might be in uploaded documents
+- "What is the policy for X?"
+- "How do I do Y according to company guidelines?"`,
+
+  inputSchema: z.object({
+    query: z.string().describe("The search query or question to find in knowledge base documents"),
+  }),
+
+  execute: async ({ context }) => {
+    try {
+      const results = await searchDocuments(context.query, 5);
+
+      if (results.length === 0) {
+        return {
+          success: true,
+          message: "No relevant information found in the knowledge base.",
+          results: [],
+        };
+      }
+
+      // Format results with relevance scores
+      const formattedResults = results.map((result, index) => ({
+        rank: index + 1,
+        relevance: (result.score * 100).toFixed(1) + "%",
+        content: result.text,
+        documentId: result.documentId,
+      }));
+
+      return {
+        success: true,
+        message: `Found ${results.length} relevant document sections`,
+        results: formattedResults,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  },
+});
 // Tool 5: Query Stock
 export const queryStockTool = createTool({
   id: "query-stock",

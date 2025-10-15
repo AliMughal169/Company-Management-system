@@ -12,7 +12,14 @@ declare module "express-session" {
     userId?: string;
   }
 }
-
+// Extend Express Request to include user
+declare global {
+  namespace Express {
+    interface Request {
+      user?: User;
+    }
+  }
+}
 /**
  * Hash a plain text password
  */
@@ -23,7 +30,10 @@ export async function hashPassword(password: string): Promise<string> {
 /**
  * Verify a password against a hash
  */
-export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+export async function verifyPassword(
+  password: string,
+  hash: string,
+): Promise<boolean> {
   return bcrypt.compare(password, hash);
 }
 
@@ -32,7 +42,8 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
  */
 export function generateRandomPassword(): string {
   const length = 12;
-  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+  const charset =
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
   let password = "";
   for (let i = 0; i < length; i++) {
     password += charset.charAt(Math.floor(Math.random() * charset.length));
@@ -43,9 +54,22 @@ export function generateRandomPassword(): string {
 /**
  * Middleware to check if user is authenticated
  */
-export function isAuthenticated(req: Request, res: Response, next: NextFunction) {
+export async function isAuthenticated(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  console.log("Checking authentication for session:", req.session);
   if (req.session.userId) {
-    return next();
+    // Populate req.user with full user data
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, req.session.userId),
+    });
+
+    if (user) {
+      req.user = user;
+      return next();
+    }
   }
   return res.status(401).json({ message: "Unauthorized" });
 }
@@ -63,7 +87,9 @@ export async function isAdmin(req: Request, res: Response, next: NextFunction) {
   });
 
   if (!user || user.role !== "admin") {
-    return res.status(403).json({ message: "Forbidden: Admin access required" });
+    return res
+      .status(403)
+      .json({ message: "Forbidden: Admin access required" });
   }
 
   next();
@@ -97,7 +123,9 @@ export function hasPermission(permission: string) {
       return next();
     }
 
-    return res.status(403).json({ message: `Forbidden: ${permission} permission required` });
+    return res
+      .status(403)
+      .json({ message: `Forbidden: ${permission} permission required` });
   };
 }
 

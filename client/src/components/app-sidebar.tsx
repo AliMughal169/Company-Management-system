@@ -40,6 +40,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { useLocation, Link } from "wouter";
+import { BookOpen } from "lucide-react";
 
 const mainMenuItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -69,6 +70,7 @@ const systemMenuItems = [
   { title: "Settings", url: "/settings", icon: Settings },
   { title: "Audit Reports", url: "/audit-reports", icon: ClipboardList },
   { title: "Permissions", url: "/permissions", icon: ShieldCheck },
+  { title: "Knowledge Base", url: "/knowledge-base", icon: BookOpen },
 ];
 
 export function AppSidebar() {
