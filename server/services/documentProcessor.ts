@@ -1,3 +1,4 @@
+import { createRequire } from "module";
 import mammoth from "mammoth";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import { db } from "../db";
@@ -5,13 +6,14 @@ import { knowledgeBaseDocuments } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { storeDocumentChunks } from "./pineconeService";
 
+const require = createRequire(import.meta.url);
+
 // Extract text from PDF
-// server/services/documentProcessor.ts
 export async function extractTextFromPDF(buffer: Buffer): Promise<string> {
-  console.log("Extracting text from PDF... an this is the buffer", buffer);
-  const pdfParse: any = await import("pdf-parse");
+  console.log("📄 Extracting text from PDF...");
+  const pdfParse = require("pdf-parse");
   const data = await pdfParse(buffer);
-  console.log("Extracted text from PDF:", data.text);
+  console.log("✅ Extracted text from PDF, length:", data.text.length);
   return data.text;
 }
 
