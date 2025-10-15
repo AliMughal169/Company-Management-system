@@ -59,7 +59,7 @@ export default function KnowledgeBase() {
     mutationFn: async (file: File) => {
       const formData = new FormData();
       formData.append("file", file);
-      console.log("FormData:", formData);
+      
       const response = await fetch("/api/knowledge-base/upload", {
         method: "POST",
         body: formData,

@@ -1,4 +1,3 @@
-import * as pdfParseModule from 'pdf-parse';
 import mammoth from "mammoth";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import { db } from "../db";
@@ -7,9 +6,12 @@ import { eq } from "drizzle-orm";
 import { storeDocumentChunks } from "./pineconeService";
 
 // Extract text from PDF
-  async function extractTextFromPDF(buffer: Buffer): Promise<string> {
-    const pdfParse = (pdfParseModule as any).default || pdfParseModule;
-    const data = await pdfParse(buffer);
+// server/services/documentProcessor.ts
+export async function extractTextFromPDF(buffer: Buffer): Promise<string> {
+  console.log("Extracting text from PDF... an this is the buffer", buffer);
+  const pdfParse: any = await import("pdf-parse");
+  const data = await pdfParse(buffer);
+  console.log("Extracted text from PDF:", data.text);
   return data.text;
 }
 
