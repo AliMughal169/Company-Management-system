@@ -1,9 +1,4 @@
 import { Pinecone } from "@pinecone-database/pinecone";
-import OpenAI from "openai";
-
-const openaiClient = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY!,
-});
 
 const pinecone = new Pinecone({
   apiKey: process.env.PINECONE_API_KEY!,
@@ -15,14 +10,26 @@ export async function getPineconeIndex() {
   return pinecone.index(indexName);
 }
 
-// Generate embeddings for text
+// Generate embeddings using Hugging Face (FREE!)
 export async function generateEmbedding(text: string): Promise<number[]> {
-  const response = await openaiClient.embeddings.create({
-    model: "text-embedding-3-small",
-    input: text,
-  });
+  const response = await fetch(
+    "https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2",
+    {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ inputs: text }),
+    }
+  );
 
-  return response.data[0].embedding;
+  if (!response.ok) {
+    throw new Error(`Hugging Face API error: ${response.statusText}`);
+  }
+
+  const embedding = await response.json();
+  return embedding;
 }
 
 // Store document chunks in Pinecone
