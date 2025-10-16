@@ -59,7 +59,6 @@ export async function isAuthenticated(
   res: Response,
   next: NextFunction,
 ) {
-  console.log("Checking authentication for session:", req.session);
   if (req.session.userId) {
     // Populate req.user with full user data
     const user = await db.query.users.findFirst({

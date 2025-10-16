@@ -1,4 +1,4 @@
-import { createRequire } from "module";
+import { extractText as unpdfExtractText, getDocumentProxy } from 'unpdf';
 import mammoth from "mammoth";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import { db } from "../db";
@@ -6,15 +6,16 @@ import { knowledgeBaseDocuments } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { storeDocumentChunks } from "./pineconeService";
 
-const require = createRequire(import.meta.url);
 
 // Extract text from PDF
+// Extract text from PDF using unpdf
 export async function extractTextFromPDF(buffer: Buffer): Promise<string> {
-  console.log("📄 Extracting text from PDF...");
-  const { PDFParse } = require("pdf-parse");
-  const data = await new PDFParse(buffer);
-  console.log("✅ Extracted text from PDF, length:", data.text.length);
-  return data.text;
+  console.log("📄 Extracting text from PDF now...");
+  const uint8Array = new Uint8Array(buffer);
+  const pdf = await getDocumentProxy(uint8Array);
+  const { text } = await unpdfExtractText(pdf);
+  console.log("✅ Extracted text from PDF, length:", text.length);
+  return text.join('\n');  // Join with newlines to preserve paragraph structure
 }
 
 // Extract text from DOCX
