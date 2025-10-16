@@ -9,33 +9,42 @@ const indexName = process.env.PINECONE_INDEX_NAME || "admin-knowledge-base";
 export async function getPineconeIndex() {
   return pinecone.index(indexName);
 }
-
 // Generate embeddings using Hugging Face (FREE!)
 export async function generateEmbedding(text: string): Promise<number[]> {
+  // Truncate text if too long
+  const truncatedText = text.slice(0, 500);
+
+  // Using a model that's explicitly for feature extraction
   const response = await fetch(
-    "https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2",
+    "https://api-inference.huggingface.co/models/BAAI/bge-small-en-v1.5",
     {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
+        Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ inputs: text }),
-    }
+      body: JSON.stringify({ inputs: truncatedText }),
+    },
   );
 
   if (!response.ok) {
-    throw new Error(`Hugging Face API error: ${response.statusText}`);
+    const errorText = await response.text();
+    throw new Error(
+      `Hugging Face API error: ${response.statusText} - ${errorText}`,
+    );
   }
 
   const embedding = await response.json();
+
+  console.log("🔍 Embedding received, length:", embedding.length);
+
   return embedding;
 }
 
 // Store document chunks in Pinecone
 export async function storeDocumentChunks(
   documentId: number,
-  chunks: { text: string; index: number }[]
+  chunks: { text: string; index: number }[],
 ): Promise<void> {
   const index = await getPineconeIndex();
 
@@ -52,7 +61,7 @@ export async function storeDocumentChunks(
           text: chunk.text,
         },
       };
-    })
+    }),
   );
 
   await index.upsert(vectors);
@@ -61,7 +70,7 @@ export async function storeDocumentChunks(
 // Search for relevant document chunks
 export async function searchDocuments(
   query: string,
-  topK: number = 5
+  topK: number = 5,
 ): Promise<Array<{ text: string; score: number; documentId: string }>> {
   const index = await getPineconeIndex();
   const queryEmbedding = await generateEmbedding(query);
