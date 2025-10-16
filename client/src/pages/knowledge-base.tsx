@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   Card,
@@ -53,13 +53,49 @@ export default function KnowledgeBase() {
       queryKey: ["/api/knowledge-base/documents"],
     },
   );
+  // Track previous document statuses to detect changes
+  const prevStatusesRef = useRef<Map<number, string>>(new Map());
 
+  // Auto-refresh when documents are processing
+  useEffect(() => {
+    // Check if any documents are processing
+    const hasProcessing = documents.some((doc) => doc.status === "processing");
+
+    // Detect status changes from processing to completed
+    documents.forEach((doc) => {
+      const prevStatus = prevStatusesRef.current.get(doc.id);
+      if (prevStatus === "processing" && doc.status === "completed") {
+        toast({
+          title: "Success",
+          description: `"${doc.filename}" processed successfully!`,
+        });
+      }
+    });
+
+    // Update tracked statuses
+    const newStatuses = new Map();
+    documents.forEach((doc) => {
+      newStatuses.set(doc.id, doc.status);
+    });
+    prevStatusesRef.current = newStatuses;
+
+    // Start polling if documents are processing
+    if (hasProcessing) {
+      const interval = setInterval(() => {
+        queryClient.invalidateQueries({
+          queryKey: ["/api/knowledge-base/documents"],
+        });
+      }, 3000); // Check every 3 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [documents, toast]);
   // Upload mutation
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
       const formData = new FormData();
       formData.append("file", file);
-      
+
       const response = await fetch("/api/knowledge-base/upload", {
         method: "POST",
         body: formData,

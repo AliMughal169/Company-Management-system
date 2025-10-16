@@ -95,7 +95,7 @@ export async function deleteDocument(documentId: number): Promise<void> {
   // Delete all chunks for this document
   // Pinecone doesn't support wildcard delete, so we need to query first
   const queryResults = await index.query({
-    vector: new Array(1536).fill(0), // dummy vector
+    vector: new Array(384).fill(0), // dummy vector for Hugging Face
     topK: 10000,
     filter: { documentId: documentId.toString() },
     includeMetadata: true,
