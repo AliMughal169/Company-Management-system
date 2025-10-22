@@ -7,16 +7,23 @@ import { setupVite, serveStatic, log } from "./vite";
 import { db } from "./db";
 import { startScheduler } from "./scheduler";
 const app = express();
+app.set("trust proxy", 1);
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 // Ensure SESSION_SECRET is set or generate a secure one
-const sessionSecret = process.env.SESSION_SECRET || (() => {
-  const generated = crypto.randomBytes(32).toString('hex');
-  console.warn("⚠️  SESSION_SECRET not set! Generated a random secret for this session.");
-  console.warn("⚠️  For production, set SESSION_SECRET environment variable to persist sessions across restarts.");
-  return generated;
-})();
+const sessionSecret =
+  process.env.SESSION_SECRET ||
+  (() => {
+    const generated = crypto.randomBytes(32).toString("hex");
+    console.warn(
+      "⚠️  SESSION_SECRET not set! Generated a random secret for this session.",
+    );
+    console.warn(
+      "⚠️  For production, set SESSION_SECRET environment variable to persist sessions across restarts.",
+    );
+    return generated;
+  })();
 
 // Session configuration
 const PgSession = connectPgSimple(session);
@@ -38,7 +45,7 @@ app.use(
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
     },
-  })
+  }),
 );
 
 app.use((req, res, next) => {
@@ -96,12 +103,15 @@ startScheduler();
   // Other ports are firewalled. Default to 5000 if not specified.
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || '5000', 10);
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
-  });
+  const port = parseInt(process.env.PORT || "5000", 10);
+  server.listen(
+    {
+      port,
+      host: "0.0.0.0",
+      reusePort: true,
+    },
+    () => {
+      log(`serving on port ${port}`);
+    },
+  );
 })();

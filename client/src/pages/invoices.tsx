@@ -32,7 +32,13 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { insertInvoiceSchema, type Invoice, type Customer, type TaxRate, type InvoiceNote } from "@shared/schema";
+import {
+  insertInvoiceSchema,
+  type Invoice,
+  type Customer,
+  type TaxRate,
+  type InvoiceNote,
+} from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
@@ -48,6 +54,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
+import { ProductAutocomplete } from "@/components/product-autocomplete";
+
 interface LineItem {
   description: string;
   quantity: number;
@@ -55,14 +63,20 @@ interface LineItem {
   amount: number;
 }
 
-const invoiceFormSchema = insertInvoiceSchema.omit({ items: true, subtotal: true, tax: true, total: true }).extend({
-  lineItems: z.array(z.object({
-    description: z.string().min(1, "Description is required"),
-    quantity: z.number().min(1, "Quantity must be at least 1"),
-    rate: z.number().min(0, "Rate must be positive"),
-  })).min(1, "At least one line item is required"),
-  taxRateId: z.number().optional(),
-});
+const invoiceFormSchema = insertInvoiceSchema
+  .omit({ items: true, subtotal: true, tax: true, total: true })
+  .extend({
+    lineItems: z
+      .array(
+        z.object({
+          description: z.string().min(1, "Description is required"),
+          quantity: z.number().min(1, "Quantity must be at least 1"),
+          rate: z.number().min(0, "Rate must be positive"),
+        }),
+      )
+      .min(1, "At least one line item is required"),
+    taxRateId: z.number().optional(),
+  });
 
 type InvoiceFormData = z.infer<typeof invoiceFormSchema>;
 
@@ -70,6 +84,8 @@ export default function Invoices() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [open, setOpen] = useState(false);
   const { toast } = useToast();
 
   const { data: invoices = [], isLoading } = useQuery<Invoice[]>({
@@ -106,11 +122,11 @@ export default function Invoices() {
   useEffect(() => {
     if (isDialogOpen && !editingInvoice) {
       fetch("/api/id-sequences/invoice/preview")
-        .then(res => res.json())
-        .then(data => {
+        .then((res) => res.json())
+        .then((data) => {
           form.setValue("invoiceNumber", data.id);
         })
-        .catch(error => {
+        .catch((error) => {
           console.error("Error fetching next invoice ID:", error);
         });
     }
@@ -120,16 +136,19 @@ export default function Invoices() {
   const selectedTaxRateId = form.watch("taxRateId");
 
   const calculateTotals = () => {
-    const subtotal = lineItems.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
+    const subtotal = lineItems.reduce(
+      (sum, item) => sum + item.quantity * item.rate,
+      0,
+    );
     let taxPercentage = 0;
-    
+
     if (selectedTaxRateId) {
-      const selectedTaxRate = taxRates.find(t => t.id === selectedTaxRateId);
+      const selectedTaxRate = taxRates.find((t) => t.id === selectedTaxRateId);
       if (selectedTaxRate) {
         taxPercentage = parseFloat(selectedTaxRate.percentage) / 100;
       }
     }
-    
+
     const tax = subtotal * taxPercentage;
     const total = subtotal + tax;
     return { subtotal, tax, total, taxPercentage: taxPercentage * 100 };
@@ -138,7 +157,8 @@ export default function Invoices() {
   const { subtotal, tax, total, taxPercentage } = calculateTotals();
 
   const createMutation = useMutation({
-    mutationFn: (data: typeof insertInvoiceSchema._type) => apiRequest("/api/invoices", "POST", data),
+    mutationFn: (data: typeof insertInvoiceSchema._type) =>
+      apiRequest("/api/invoices", "POST", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
       setIsDialogOpen(false);
@@ -146,7 +166,11 @@ export default function Invoices() {
       toast({ title: "Invoice created successfully" });
     },
     onError: (error: any) => {
-      toast({ title: "Error creating invoice", description: error.message, variant: "destructive" });
+      toast({
+        title: "Error creating invoice",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -161,7 +185,11 @@ export default function Invoices() {
       toast({ title: "Invoice updated successfully" });
     },
     onError: (error: any) => {
-      toast({ title: "Error updating invoice", description: error.message, variant: "destructive" });
+      toast({
+        title: "Error updating invoice",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -172,29 +200,38 @@ export default function Invoices() {
       toast({ title: "Invoice deleted successfully" });
     },
     onError: (error: any) => {
-      toast({ title: "Error deleting invoice", description: error.message, variant: "destructive" });
+      toast({
+        title: "Error deleting invoice",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
   const onSubmit = async (data: InvoiceFormData) => {
     const { lineItems, ...rest } = data;
     const { subtotal, tax, total } = calculateTotals();
-    
+
     let invoiceNumber = rest.invoiceNumber;
-    
+
     // Generate next ID when creating a new invoice
     if (!editingInvoice) {
       try {
-        const response = await fetch("/api/id-sequences/invoice/next", { method: "POST" });
+        const response = await fetch("/api/id-sequences/invoice/next", {
+          method: "POST",
+        });
         const idData = await response.json();
         invoiceNumber = idData.id;
       } catch (error) {
         console.error("Error generating invoice ID:", error);
-        toast({ title: "Error generating invoice number", variant: "destructive" });
+        toast({
+          title: "Error generating invoice number",
+          variant: "destructive",
+        });
         return;
       }
     }
-    
+
     const invoiceData = {
       ...rest,
       invoiceNumber,
@@ -241,42 +278,53 @@ export default function Invoices() {
 
   const addLineItem = () => {
     const currentItems = form.getValues("lineItems");
-    form.setValue("lineItems", [...currentItems, { description: "", quantity: 1, rate: 0 }]);
+    form.setValue("lineItems", [
+      ...currentItems,
+      { description: "", quantity: 1, rate: 0 },
+    ]);
   };
 
   const removeLineItem = (index: number) => {
     const currentItems = form.getValues("lineItems");
     if (currentItems.length > 1) {
-      form.setValue("lineItems", currentItems.filter((_, i) => i !== index));
+      form.setValue(
+        "lineItems",
+        currentItems.filter((_, i) => i !== index),
+      );
     }
   };
 
   const getCustomerName = (customerId: number) => {
-    const customer = customers.find(c => c.id === customerId);
+    const customer = customers.find((c) => c.id === customerId);
     return customer?.name || "Unknown";
   };
 
-  const filteredInvoices = invoices.filter((invoice) =>
-    invoice.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    getCustomerName(invoice.customerId).toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredInvoices = invoices.filter(
+    (invoice) =>
+      invoice.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      getCustomerName(invoice.customerId)
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase()),
   );
 
   const columns: Column<Invoice>[] = [
     { header: "Invoice #", accessor: "invoiceNumber", className: "font-mono" },
-    { 
-      header: "Customer", 
+    {
+      header: "Customer",
       accessor: (row) => getCustomerName(row.customerId),
     },
-    { 
-      header: "Total", 
-      accessor: (row) => `$${parseFloat(row.total).toLocaleString()}`, 
-      className: "font-semibold" 
+    {
+      header: "Total",
+      accessor: (row) => `$${parseFloat(row.total).toLocaleString()}`,
+      className: "font-semibold",
     },
     { header: "Issue Date", accessor: "issueDate" },
     { header: "Due Date", accessor: "dueDate" },
     {
       header: "Status",
-      accessor: (row) => <StatusBadge status={row.status as "paid" | "pending" | "overdue"} />,
+      accessor: (row) => (
+        <StatusBadge status={row.status as "paid" | "pending" | "overdue"} />
+      ),
     },
     {
       header: "Actions",
@@ -308,7 +356,8 @@ export default function Invoices() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Delete Invoice?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will permanently delete {row.invoiceNumber}. This action cannot be undone.
+                  This will permanently delete {row.invoiceNumber}. This action
+                  cannot be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -353,10 +402,15 @@ export default function Invoices() {
           </DialogTrigger>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{editingInvoice ? "Edit Invoice" : "Create New Invoice"}</DialogTitle>
+              <DialogTitle>
+                {editingInvoice ? "Edit Invoice" : "Create New Invoice"}
+              </DialogTitle>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-4"
+              >
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -365,9 +419,16 @@ export default function Invoices() {
                       <FormItem>
                         <FormLabel>Invoice Number *</FormLabel>
                         <FormControl>
-                          <Input {...field} readOnly className="bg-muted" data-testid="input-invoice-number" />
+                          <Input
+                            {...field}
+                            readOnly
+                            className="bg-muted"
+                            data-testid="input-invoice-number"
+                          />
                         </FormControl>
-                        <p className="text-xs text-muted-foreground">Auto-generated</p>
+                        <p className="text-xs text-muted-foreground">
+                          Auto-generated
+                        </p>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -378,7 +439,12 @@ export default function Invoices() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Customer *</FormLabel>
-                        <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+                        <Select
+                          onValueChange={(value) =>
+                            field.onChange(parseInt(value))
+                          }
+                          value={field.value?.toString()}
+                        >
                           <FormControl>
                             <SelectTrigger data-testid="select-customer">
                               <SelectValue placeholder="Select a customer" />
@@ -386,7 +452,10 @@ export default function Invoices() {
                           </FormControl>
                           <SelectContent>
                             {customers.map((customer) => (
-                              <SelectItem key={customer.id} value={customer.id.toString()}>
+                              <SelectItem
+                                key={customer.id}
+                                value={customer.id.toString()}
+                              >
                                 {customer.name}
                               </SelectItem>
                             ))}
@@ -406,7 +475,11 @@ export default function Invoices() {
                       <FormItem>
                         <FormLabel>Issue Date *</FormLabel>
                         <FormControl>
-                          <Input type="date" {...field} data-testid="input-issue-date" />
+                          <Input
+                            type="date"
+                            {...field}
+                            data-testid="input-issue-date"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -419,7 +492,11 @@ export default function Invoices() {
                       <FormItem>
                         <FormLabel>Due Date *</FormLabel>
                         <FormControl>
-                          <Input type="date" {...field} data-testid="input-due-date" />
+                          <Input
+                            type="date"
+                            {...field}
+                            data-testid="input-due-date"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -431,7 +508,10 @@ export default function Invoices() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Status *</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
                           <FormControl>
                             <SelectTrigger data-testid="select-status">
                               <SelectValue placeholder="Select status" />
@@ -455,14 +535,14 @@ export default function Invoices() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Tax Rate</FormLabel>
-                      <Select 
+                      <Select
                         onValueChange={(value) => {
                           if (value === "none") {
                             field.onChange(undefined);
                           } else {
                             field.onChange(parseInt(value));
                           }
-                        }} 
+                        }}
                         value={field.value?.toString() || "none"}
                       >
                         <FormControl>
@@ -473,7 +553,10 @@ export default function Invoices() {
                         <SelectContent>
                           <SelectItem value="none">No Tax</SelectItem>
                           {taxRates.map((taxRate) => (
-                            <SelectItem key={taxRate.id} value={taxRate.id.toString()}>
+                            <SelectItem
+                              key={taxRate.id}
+                              value={taxRate.id.toString()}
+                            >
                               {taxRate.name} ({taxRate.percentage}%)
                             </SelectItem>
                           ))}
@@ -487,14 +570,23 @@ export default function Invoices() {
                 <div className="border rounded-lg p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <h3 className="font-semibold">Line Items</h3>
-                    <Button type="button" variant="outline" size="sm" onClick={addLineItem} data-testid="button-add-line-item">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addLineItem}
+                      data-testid="button-add-line-item"
+                    >
                       <Plus className="h-4 w-4 mr-1" />
                       Add Item
                     </Button>
                   </div>
 
                   {lineItems.map((_, index) => (
-                    <div key={index} className="grid grid-cols-12 gap-2 items-start">
+                    <div
+                      key={index}
+                      className="grid grid-cols-12 gap-2 items-start"
+                    >
                       <div className="col-span-5">
                         <FormField
                           control={form.control}
@@ -502,7 +594,20 @@ export default function Invoices() {
                           render={({ field }) => (
                             <FormItem>
                               <FormControl>
-                                <Input {...field} placeholder="Description" data-testid={`input-line-item-description-${index}`} />
+                                <ProductAutocomplete
+                                  value={field.value}
+                                  onChange={field.onChange}
+                                  onSelectProduct={(product) => {
+                                    setSelectedProduct(product);
+                                    form.setValue(
+                                      `lineItems.${index}.rate`,
+                                      parseFloat(product.unitPrice),
+                                    );
+                                  }}
+                                  label=""
+                                  placeholder="Search products..."
+                                  required
+                                />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -516,12 +621,16 @@ export default function Invoices() {
                           render={({ field }) => (
                             <FormItem>
                               <FormControl>
-                                <Input 
-                                  type="number" 
-                                  {...field} 
-                                  onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                                  placeholder="Qty" 
-                                  data-testid={`input-line-item-quantity-${index}`} 
+                                <Input
+                                  type="number"
+                                  {...field}
+                                  onChange={(e) =>
+                                    field.onChange(
+                                      parseInt(e.target.value) || 0,
+                                    )
+                                  }
+                                  placeholder="Qty"
+                                  data-testid={`input-line-item-quantity-${index}`}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -536,13 +645,17 @@ export default function Invoices() {
                           render={({ field }) => (
                             <FormItem>
                               <FormControl>
-                                <Input 
-                                  type="number" 
+                                <Input
+                                  type="number"
                                   step="0.01"
-                                  {...field} 
-                                  onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                                  placeholder="Rate" 
-                                  data-testid={`input-line-item-rate-${index}`} 
+                                  {...field}
+                                  onChange={(e) =>
+                                    field.onChange(
+                                      parseFloat(e.target.value) || 0,
+                                    )
+                                  }
+                                  placeholder="Rate"
+                                  data-testid={`input-line-item-rate-${index}`}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -551,7 +664,12 @@ export default function Invoices() {
                         />
                       </div>
                       <div className="col-span-2 flex items-center justify-between pt-2">
-                        <span className="text-sm font-medium">${(lineItems[index].quantity * lineItems[index].rate).toFixed(2)}</span>
+                        <span className="text-sm font-medium">
+                          $
+                          {(
+                            lineItems[index].quantity * lineItems[index].rate
+                          ).toFixed(2)}
+                        </span>
                       </div>
                       <div className="col-span-1 flex items-center justify-end pt-2">
                         <Button
@@ -571,10 +689,14 @@ export default function Invoices() {
                   <div className="border-t pt-3 space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>Subtotal:</span>
-                      <span className="font-medium">${subtotal.toFixed(2)}</span>
+                      <span className="font-medium">
+                        ${subtotal.toFixed(2)}
+                      </span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span>Tax {taxPercentage > 0 ? `(${taxPercentage}%)` : ''}:</span>
+                      <span>
+                        Tax {taxPercentage > 0 ? `(${taxPercentage}%)` : ""}:
+                      </span>
                       <span className="font-medium">${tax.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-lg font-bold">
@@ -589,7 +711,9 @@ export default function Invoices() {
                   {invoiceNotes.length > 0 ? (
                     <Select
                       onValueChange={(value) => {
-                        const selectedNote = invoiceNotes.find(n => n.id.toString() === value);
+                        const selectedNote = invoiceNotes.find(
+                          (n) => n.id.toString() === value,
+                        );
                         if (selectedNote) {
                           form.setValue("notes", selectedNote.content);
                         }
@@ -608,12 +732,14 @@ export default function Invoices() {
                     </Select>
                   ) : (
                     <div className="flex items-center gap-2 p-2 border rounded-md bg-muted">
-                      <p className="text-sm text-muted-foreground flex-1">No note templates available</p>
+                      <p className="text-sm text-muted-foreground flex-1">
+                        No note templates available
+                      </p>
                       <Button
                         type="button"
                         size="sm"
                         variant="outline"
-                        onClick={() => window.open('/settings', '_blank')}
+                        onClick={() => window.open("/settings", "_blank")}
                         data-testid="button-create-note-template"
                       >
                         Create Template
@@ -626,7 +752,13 @@ export default function Invoices() {
                     render={({ field }) => (
                       <FormItem>
                         <FormControl>
-                          <Textarea {...field} value={field.value || ""} placeholder="Type custom notes or select a template above..." rows={3} data-testid="input-invoice-notes" />
+                          <Textarea
+                            {...field}
+                            value={field.value || ""}
+                            placeholder="Type custom notes or select a template above..."
+                            rows={3}
+                            data-testid="input-invoice-notes"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -635,15 +767,23 @@ export default function Invoices() {
                 </div>
 
                 <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => handleDialogClose(false)}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => handleDialogClose(false)}
+                  >
                     Cancel
                   </Button>
-                  <Button 
-                    type="submit" 
-                    disabled={createMutation.isPending || updateMutation.isPending} 
+                  <Button
+                    type="submit"
+                    disabled={
+                      createMutation.isPending || updateMutation.isPending
+                    }
                     data-testid="button-save-invoice"
                   >
-                    {createMutation.isPending || updateMutation.isPending ? "Saving..." : "Save Invoice"}
+                    {createMutation.isPending || updateMutation.isPending
+                      ? "Saving..."
+                      : "Save Invoice"}
                   </Button>
                 </DialogFooter>
               </form>
@@ -663,7 +803,10 @@ export default function Invoices() {
             data-testid="input-search-invoices"
           />
         </div>
-        <ExportButton onExportCSV={handleExportCSV} onExportPDF={handleExportPDF} />
+        <ExportButton
+          onExportCSV={handleExportCSV}
+          onExportPDF={handleExportPDF}
+        />
       </div>
 
       {isLoading ? (

@@ -171,6 +171,50 @@ export const insertStockSchema = createInsertSchema(stock).omit({
 export type InsertStock = z.infer<typeof insertStockSchema>;
 export type Stock = typeof stock.$inferSelect;
 
+
+// Invoice Items Table (tracks individual line items)
+export const invoiceItems = pgTable("invoice_items", {
+  id: serial("id").primaryKey(),
+  invoiceId: integer("invoice_id").notNull().references(() => invoices.id, { onDelete: "cascade" }),
+  stockId: integer("stock_id").notNull().references(() => stock.id),
+  productName: text("product_name").notNull(),
+  sku: text("sku").notNull(),
+  quantity: integer("quantity").notNull(),
+  unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
+  total: decimal("total", { precision: 10, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertInvoiceItemSchema = createInsertSchema(invoiceItems).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertInvoiceItem = z.infer<typeof insertInvoiceItemSchema>;
+export type InvoiceItem = typeof invoiceItems.$inferSelect;
+
+// Stock Movements Table (audit trail for inventory)
+export const stockMovements = pgTable("stock_movements", {
+  id: serial("id").primaryKey(),
+  stockId: integer("stock_id").notNull().references(() => stock.id),
+  movementType: text("movement_type").notNull(), // 'sale', 'restock', 'adjustment', 'reserved', 'released'
+  quantity: integer("quantity").notNull(),
+  referenceType: text("reference_type"), // 'invoice', 'proforma', 'manual'
+  referenceId: integer("reference_id"),
+  notes: text("notes"),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertStockMovementSchema = createInsertSchema(stockMovements).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertStockMovement = z.infer<typeof insertStockMovementSchema>;
+export type StockMovement = typeof stockMovements.$inferSelect;
+
+
 // Salaries
 export const salaries = pgTable("salaries", {
   id: serial("id").primaryKey(),

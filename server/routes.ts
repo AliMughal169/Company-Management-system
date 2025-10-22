@@ -502,7 +502,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const allStock = await db.select().from(stock);
     res.json(allStock);
   });
+  // Stock search for autocomplete
+  app.get("/api/stock/search", isAuthenticated, async (req, res) => {
+    try {
+      const query = req.query.q as string;
 
+      if (!query || query.length < 1) {
+        return res.json([]);
+      }
+
+      const searchTerm = `%${query.toLowerCase()}%`;
+
+      const results = await db
+        .select()
+        .from(stock)
+        .where(
+          sql`LOWER(${stock.productName}) LIKE ${searchTerm} OR LOWER(${stock.sku}) LIKE ${searchTerm}`,
+        )
+        .limit(10);
+
+      res.json(results);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
   app.post("/api/stock", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertStockSchema.parse(req.body);
