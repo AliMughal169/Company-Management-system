@@ -41,7 +41,7 @@ import {
   notifications,
   reminderSettings,
   invoiceReminders,
-  invoiceItems
+  invoiceItems,
 } from "@shared/schema";
 import { checkOverdueInvoices } from "./services/reminderService";
 import { eq, and, lt, sql, desc } from "drizzle-orm";
@@ -325,6 +325,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/invoices", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertInvoiceSchema.parse(req.body);
+      // Validate stock availability
+      if (req.body.items) {
+        const lineItems = JSON.parse(req.body.items);
+
+        for (const item of lineItems) {
+          if (item.stockId) {
+            // Get current stock
+            const [stockItem] = await db
+              .select()
+              .from(stock)
+              .where(eq(stock.id, item.stockId));
+
+            if (!stockItem) {
+              return res.status(400).json({
+                message: `Product "${item.description}" not found in stock`,
+              });
+            }
+
+            // Check if enough quantity available
+            if (stockItem.quantity < item.quantity) {
+              return res.status(400).json({
+                message: `Insufficient stock for "${item.description}".                         Available: ${stockItem.quantity}, Requested: ${item.quantity}`,
+              });
+            }
+          }
+        }
+      }
       const [newInvoice] = await db
         .insert(invoices)
         .values(validatedData)
