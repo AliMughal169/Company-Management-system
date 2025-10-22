@@ -1,5 +1,17 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, serial, integer, decimal, timestamp, date, boolean, index, jsonb } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  varchar,
+  serial,
+  integer,
+  decimal,
+  timestamp,
+  date,
+  boolean,
+  index,
+  jsonb,
+} from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -16,14 +28,18 @@ export const sessions = pgTable(
 
 // Users table for username/password authentication
 export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   username: varchar("username").notNull().unique(),
   email: varchar("email").notNull().unique(),
   passwordHash: varchar("password_hash").notNull(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   role: varchar("role").notNull().default("user"), // user, admin
-  permissions: jsonb("permissions").$type<string[]>().default(sql`'[]'::jsonb`), // Array of allowed modules/actions
+  permissions: jsonb("permissions")
+    .$type<string[]>()
+    .default(sql`'[]'::jsonb`), // Array of allowed modules/actions
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -62,7 +78,9 @@ export type Customer = typeof customers.$inferSelect;
 export const invoices = pgTable("invoices", {
   id: serial("id").primaryKey(),
   invoiceNumber: text("invoice_number").notNull().unique(),
-  customerId: integer("customer_id").notNull().references(() => customers.id),
+  customerId: integer("customer_id")
+    .notNull()
+    .references(() => customers.id),
   issueDate: date("issue_date").notNull(),
   dueDate: date("due_date").notNull(),
   items: text("items").notNull(), // JSON string of line items
@@ -86,7 +104,9 @@ export type Invoice = typeof invoices.$inferSelect;
 export const proformaInvoices = pgTable("proforma_invoices", {
   id: serial("id").primaryKey(),
   proformaNumber: text("proforma_number").notNull().unique(),
-  customerId: integer("customer_id").notNull().references(() => customers.id),
+  customerId: integer("customer_id")
+    .notNull()
+    .references(() => customers.id),
   issueDate: date("issue_date").notNull(),
   validUntil: date("valid_until").notNull(),
   items: text("items").notNull(), // JSON string of line items
@@ -98,7 +118,9 @@ export const proformaInvoices = pgTable("proforma_invoices", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const insertProformaInvoiceSchema = createInsertSchema(proformaInvoices).omit({
+export const insertProformaInvoiceSchema = createInsertSchema(
+  proformaInvoices,
+).omit({
   id: true,
   createdAt: true,
 });
@@ -171,12 +193,15 @@ export const insertStockSchema = createInsertSchema(stock).omit({
 export type InsertStock = z.infer<typeof insertStockSchema>;
 export type Stock = typeof stock.$inferSelect;
 
-
 // Invoice Items Table (tracks individual line items)
 export const invoiceItems = pgTable("invoice_items", {
   id: serial("id").primaryKey(),
-  invoiceId: integer("invoice_id").notNull().references(() => invoices.id, { onDelete: "cascade" }),
-  stockId: integer("stock_id").notNull().references(() => stock.id),
+  invoiceId: integer("invoice_id")
+    .notNull()
+    .references(() => invoices.id, { onDelete: "cascade" }),
+  stockId: integer("stock_id")
+    .notNull()
+    .references(() => stock.id),
   productName: text("product_name").notNull(),
   sku: text("sku").notNull(),
   quantity: integer("quantity").notNull(),
@@ -196,7 +221,9 @@ export type InvoiceItem = typeof invoiceItems.$inferSelect;
 // Stock Movements Table (audit trail for inventory)
 export const stockMovements = pgTable("stock_movements", {
   id: serial("id").primaryKey(),
-  stockId: integer("stock_id").notNull().references(() => stock.id),
+  stockId: integer("stock_id")
+    .notNull()
+    .references(() => stock.id),
   movementType: text("movement_type").notNull(), // 'sale', 'restock', 'adjustment', 'reserved', 'released'
   quantity: integer("quantity").notNull(),
   referenceType: text("reference_type"), // 'invoice', 'proforma', 'manual'
@@ -206,7 +233,9 @@ export const stockMovements = pgTable("stock_movements", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const insertStockMovementSchema = createInsertSchema(stockMovements).omit({
+export const insertStockMovementSchema = createInsertSchema(
+  stockMovements,
+).omit({
   id: true,
   createdAt: true,
 });
@@ -214,16 +243,21 @@ export const insertStockMovementSchema = createInsertSchema(stockMovements).omit
 export type InsertStockMovement = z.infer<typeof insertStockMovementSchema>;
 export type StockMovement = typeof stockMovements.$inferSelect;
 
-
 // Salaries
 export const salaries = pgTable("salaries", {
   id: serial("id").primaryKey(),
-  employeeId: integer("employee_id").notNull().references(() => employees.id),
+  employeeId: integer("employee_id")
+    .notNull()
+    .references(() => employees.id),
   month: text("month").notNull(),
   year: integer("year").notNull(),
   basicSalary: decimal("basic_salary", { precision: 10, scale: 2 }).notNull(),
-  allowances: decimal("allowances", { precision: 10, scale: 2 }).notNull().default("0"),
-  deductions: decimal("deductions", { precision: 10, scale: 2 }).notNull().default("0"),
+  allowances: decimal("allowances", { precision: 10, scale: 2 })
+    .notNull()
+    .default("0"),
+  deductions: decimal("deductions", { precision: 10, scale: 2 })
+    .notNull()
+    .default("0"),
   netSalary: decimal("net_salary", { precision: 10, scale: 2 }).notNull(),
   status: text("status").notNull().default("pending"), // pending, paid, cancelled
   paymentDate: date("payment_date"),
@@ -241,7 +275,9 @@ export type Salary = typeof salaries.$inferSelect;
 // Leave Management
 export const leave = pgTable("leave", {
   id: serial("id").primaryKey(),
-  employeeId: integer("employee_id").notNull().references(() => employees.id),
+  employeeId: integer("employee_id")
+    .notNull()
+    .references(() => employees.id),
   leaveType: text("leave_type").notNull(), // sick, vacation, personal, unpaid
   startDate: date("start_date").notNull(),
   endDate: date("end_date").notNull(),
@@ -261,7 +297,9 @@ export type Leave = typeof leave.$inferSelect;
 // Attendance
 export const attendance = pgTable("attendance", {
   id: serial("id").primaryKey(),
-  employeeId: integer("employee_id").notNull().references(() => employees.id),
+  employeeId: integer("employee_id")
+    .notNull()
+    .references(() => employees.id),
   date: date("date").notNull(),
   checkIn: text("check_in"),
   checkOut: text("check_out"),
@@ -282,7 +320,9 @@ export type Attendance = typeof attendance.$inferSelect;
 // Performance Reviews
 export const performance = pgTable("performance", {
   id: serial("id").primaryKey(),
-  employeeId: integer("employee_id").notNull().references(() => employees.id),
+  employeeId: integer("employee_id")
+    .notNull()
+    .references(() => employees.id),
   reviewDate: date("review_date").notNull(),
   rating: integer("rating").notNull(), // 1-5
   goals: text("goals"),
@@ -303,7 +343,9 @@ export type Performance = typeof performance.$inferSelect;
 // Employee Documents
 export const documents = pgTable("documents", {
   id: serial("id").primaryKey(),
-  employeeId: integer("employee_id").notNull().references(() => employees.id),
+  employeeId: integer("employee_id")
+    .notNull()
+    .references(() => employees.id),
   documentType: text("document_type").notNull(), // contract, certificate, id_proof, other
   documentName: text("document_name").notNull(),
   uploadDate: date("upload_date").notNull(),
@@ -323,7 +365,9 @@ export type Document = typeof documents.$inferSelect;
 // Benefits
 export const benefits = pgTable("benefits", {
   id: serial("id").primaryKey(),
-  employeeId: integer("employee_id").notNull().references(() => employees.id),
+  employeeId: integer("employee_id")
+    .notNull()
+    .references(() => employees.id),
   benefitType: text("benefit_type").notNull(), // health_insurance, retirement, gym, transport, other
   description: text("description").notNull(),
   amount: decimal("amount", { precision: 10, scale: 2 }),
@@ -343,7 +387,9 @@ export type Benefit = typeof benefits.$inferSelect;
 // Training
 export const training = pgTable("training", {
   id: serial("id").primaryKey(),
-  employeeId: integer("employee_id").notNull().references(() => employees.id),
+  employeeId: integer("employee_id")
+    .notNull()
+    .references(() => employees.id),
   trainingName: text("training_name").notNull(),
   provider: text("provider"),
   startDate: date("start_date").notNull(),
@@ -364,7 +410,9 @@ export type Training = typeof training.$inferSelect;
 // Exit Management
 export const exit = pgTable("exit", {
   id: serial("id").primaryKey(),
-  employeeId: integer("employee_id").notNull().references(() => employees.id),
+  employeeId: integer("employee_id")
+    .notNull()
+    .references(() => employees.id),
   exitDate: date("exit_date").notNull(),
   reason: text("reason").notNull(),
   exitType: text("exit_type").notNull(), // resignation, termination, retirement, other
@@ -445,14 +493,16 @@ export const insertIdSequenceSchema = createInsertSchema(idSequences).omit({
 });
 
 //Inovice Reminders
-export const invoiceReminders = pgTable("invoice_reminders",{
+export const invoiceReminders = pgTable("invoice_reminders", {
   id: serial("id").primaryKey(),
-  invoiceId: integer("invoice_id").notNull().references(() => invoices.id),
+  invoiceId: integer("invoice_id")
+    .notNull()
+    .references(() => invoices.id),
   daysOverdue: integer("days_overdue").notNull(),
   sentAt: timestamp("sent_at").defaultNow().notNull(),
-  emailSent: boolean("email_sent").notNull().default(false)
-})
-export const notifications= pgTable("notifications",{
+  emailSent: boolean("email_sent").notNull().default(false),
+});
+export const notifications = pgTable("notifications", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").references(() => users.id),
   title: text("title").notNull(),
@@ -461,22 +511,28 @@ export const notifications= pgTable("notifications",{
   isRead: boolean("is_read").notNull().default(false),
   relatedInvoiceId: integer("related_invoice_id").references(() => invoices.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-})
+});
 
-export const reminderSettings = pgTable("reminder_settings",{
+export const reminderSettings = pgTable("reminder_settings", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   daysOverdue: integer("days_overdue").notNull(),
   enabled: boolean("enabled").notNull().default(true),
   emailTemplate: text("email_template"),
-})
-export const insertInvoiceReminderSchema = createInsertSchema(invoiceReminders).omit({ id: true, sentAt: true });
-export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true, createdAt: true });
-export const insertReminderSettingSchema = createInsertSchema(reminderSettings).omit({ id: true });
+});
+export const insertInvoiceReminderSchema = createInsertSchema(
+  invoiceReminders,
+).omit({ id: true, sentAt: true });
+export const insertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+  createdAt: true,
+});
+export const insertReminderSettingSchema = createInsertSchema(
+  reminderSettings,
+).omit({ id: true });
 export type InvoiceReminder = typeof invoiceReminders.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
 export type ReminderSetting = typeof reminderSettings.$inferSelect;
-
 
 // Knowledge Base Documents (RAG System)
 export const knowledgeBaseDocuments = pgTable("knowledge_base_documents", {
@@ -484,7 +540,9 @@ export const knowledgeBaseDocuments = pgTable("knowledge_base_documents", {
   filename: varchar("filename", { length: 255 }).notNull(),
   contentType: varchar("content_type", { length: 100 }).notNull(),
   fileSize: integer("file_size").notNull(), // in bytes
-  uploadedBy: varchar("uploaded_by").notNull().references(() => users.id),
+  uploadedBy: varchar("uploaded_by")
+    .notNull()
+    .references(() => users.id),
   uploadDate: timestamp("upload_date").defaultNow().notNull(),
   status: varchar("status", { length: 50 }).notNull().default("processing"), // processing, completed, failed
   chunksCount: integer("chunks_count").default(0), // number of chunks created
@@ -492,9 +550,12 @@ export const knowledgeBaseDocuments = pgTable("knowledge_base_documents", {
 });
 
 export type KnowledgeBaseDocument = typeof knowledgeBaseDocuments.$inferSelect;
-export type InsertKnowledgeBaseDocument = typeof knowledgeBaseDocuments.$inferInsert;
+export type InsertKnowledgeBaseDocument =
+  typeof knowledgeBaseDocuments.$inferInsert;
 
-export const insertKnowledgeBaseDocumentSchema = createInsertSchema(knowledgeBaseDocuments).omit({
+export const insertKnowledgeBaseDocumentSchema = createInsertSchema(
+  knowledgeBaseDocuments,
+).omit({
   id: true,
   uploadDate: true,
 });

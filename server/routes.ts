@@ -396,6 +396,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json(newInvoice);
     } catch (error: any) {
+      console.log("Error In API invoice: ", error.message);
       res.status(400).json({ error: error.message });
     }
   });
