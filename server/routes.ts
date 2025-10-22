@@ -41,6 +41,7 @@ import {
   notifications,
   reminderSettings,
   invoiceReminders,
+  invoiceItems
 } from "@shared/schema";
 import { checkOverdueInvoices } from "./services/reminderService";
 import { eq, and, lt, sql, desc } from "drizzle-orm";
@@ -328,6 +329,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .insert(invoices)
         .values(validatedData)
         .returning();
+      // Parse and save line items
+      if (req.body.items) {
+        const lineItems = JSON.parse(req.body.items);
+
+        for (const item of lineItems) {
+          await db.insert(invoiceItems).values({
+            invoiceId: newInvoice.id,
+            stockId: item.stockId || 0, // We'll add this later from frontend
+            productName: item.description,
+            sku: item.sku || "N/A", // We'll add this later
+            quantity: item.quantity,
+            unitPrice: item.rate.toString(),
+            total: (item.quantity * item.rate).toString(),
+          });
+        }
+      }
       res.json(newInvoice);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
