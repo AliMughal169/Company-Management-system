@@ -61,8 +61,8 @@ interface LineItem {
   quantity: number;
   rate: number;
   amount: number;
-  stockId?: number;  // ← ADD THIS
-  sku?: string;      // ← ADD THIS
+  stockId?: number; // ← ADD THIS
+  sku?: string; // ← ADD THIS
 }
 
 const invoiceFormSchema = insertInvoiceSchema
@@ -74,6 +74,8 @@ const invoiceFormSchema = insertInvoiceSchema
           description: z.string().min(1, "Description is required"),
           quantity: z.number().min(1, "Quantity must be at least 1"),
           rate: z.number().min(0, "Rate must be positive"),
+          stockId: z.number().optional(),
+          sku: z.string().optional(),
         }),
       )
       .min(1, "At least one line item is required"),
@@ -88,13 +90,7 @@ export default function Invoices() {
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [open, setOpen] = useState(false);
-  const [selectedProducts, setSelectedProducts] = useState<Array<{
-    stockId: number;
-    productName: string;
-    sku: string;
-    quantity: number;
-    unitPrice: number;
-  }>>([]);
+
   const { toast } = useToast();
 
   const { data: invoices = [], isLoading } = useQuery<Invoice[]>({
@@ -608,13 +604,29 @@ export default function Invoices() {
                                   onChange={field.onChange}
                                   onSelectProduct={(product) => {
                                     setSelectedProduct(product);
-                                    form.setValue(
-                                      `lineItems.${index}.rate`,
-                                      parseFloat(product.unitPrice),
+
+                                    // Get current line items
+                                    const currentItems =
+                                      form.getValues("lineItems");
+
+                                    // Update the specific line item with all fields
+                                    const updatedItems = currentItems.map(
+                                      (item, i) => {
+                                        console.log("Item to be updated", item);
+                                        if (i === index) {
+                                          return {
+                                            ...item,
+                                            rate: parseFloat(product.unitPrice),
+                                            stockId: product.id,
+                                            sku: product.sku,
+                                          };
+                                        }
+                                        return item;
+                                      },
                                     );
-                                    // ← ADD THESE TWO LINES:
-                                    (form.getValues('lineItems')[index] as                                             any).stockId = product.id;
-                                    (form.getValues('lineItems')[index] as                                             any).sku = product.sku;
+
+                                    // Set the entire lineItems array
+                                    form.setValue("lineItems", updatedItems);
                                   }}
                                   label=""
                                   placeholder="Search products..."

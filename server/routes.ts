@@ -360,20 +360,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Parse and save line items
       if (req.body.items) {
         const lineItems = JSON.parse(req.body.items);
+        console.log(
+          "🔍 DEBUG - Line Items:",
+          JSON.stringify(lineItems, null, 2),
+        ); // ← ADD THIS
 
         for (const item of lineItems) {
-          await db.insert(invoiceItems).values({
-            invoiceId: newInvoice.id,
-            stockId: item.stockId || 0, // We'll add this later from frontend
-            productName: item.description,
-            sku: item.sku || "N/A", // We'll add this later
-            quantity: item.quantity,
-            unitPrice: item.rate.toString(),
-            total: (item.quantity * item.rate).toString(),
-          });
-          // Deduct stock and create movement record
+          // Only create invoice_items for stock products (those with stockId)
           if (item.stockId) {
-            // Decrease stock quantity
+            await db.insert(invoiceItems).values({
+              invoiceId: newInvoice.id,
+              stockId: item.stockId,
+              productName: item.description,
+              sku: item.sku || "N/A",
+              quantity: item.quantity,
+              unitPrice: item.rate.toString(),
+              total: (item.quantity * item.rate).toString(),
+            });
+
+            // Deduct stock and create movement record
             await db
               .update(stock)
               .set({
@@ -392,11 +397,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
               createdBy: (req.user as any).id,
             });
           }
+          // If no stockId, it's a custom item - just stays in items JSON
         }
       }
       res.json(newInvoice);
     } catch (error: any) {
-      console.log("Error In API invoice: ", error.message);
+      
       res.status(400).json({ error: error.message });
     }
   });
