@@ -42,6 +42,7 @@ import {
   reminderSettings,
   invoiceReminders,
   invoiceItems,
+  stockMovements,
 } from "@shared/schema";
 import { checkOverdueInvoices } from "./services/reminderService";
 import { eq, and, lt, sql, desc } from "drizzle-orm";
@@ -370,6 +371,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
             unitPrice: item.rate.toString(),
             total: (item.quantity * item.rate).toString(),
           });
+          // Deduct stock and create movement record
+          if (item.stockId) {
+            // Decrease stock quantity
+            await db
+              .update(stock)
+              .set({
+                quantity: sql`${stock.quantity} - ${item.quantity}`,
+              })
+              .where(eq(stock.id, item.stockId));
+
+            // Create stock movement record (audit trail)
+            await db.insert(stockMovements).values({
+              stockId: item.stockId,
+              movementType: "sale",
+              quantity: -item.quantity, // Negative for decrease
+              referenceType: "invoice",
+              referenceId: newInvoice.id,
+              notes: `Sold via invoice ${newInvoice.invoiceNumber}`,
+              createdBy: (req.user as any).id,
+            });
+          }
         }
       }
       res.json(newInvoice);
