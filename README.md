@@ -3,6 +3,7 @@ A comprehensive full-stack admin panel for company management with AI-powered Bu
 
 ✨ Features
 📊 Core Management Modules
+
 Sales Invoices - Create, track, and manage customer invoices with auto-generated sequential IDs
 Proforma Invoices - Generate proforma invoices with customizable templates
 Customer Management - Complete CRM with contact information and transaction history
@@ -11,24 +12,32 @@ Employee Management - Full HR module with employee records and department organi
 Salary & Payroll - Detailed salary breakdowns with allowances, deductions, and payslip generation
 Stock/Inventory - Real-time inventory tracking with low-stock alerts and reorder levels
 Settings Module - Configurable tax rates, currency settings, invoice notes, and ID sequences
+
 🤖 AI-Powered Features
+
 Business Intelligence Agent - ChatGPT-powered assistant using Mastra AI framework
 RAG Knowledge Base - Upload company documents (PDFs, DOCX, TXT) for AI-powered search
 Semantic Document Search - Vector search using Pinecone database and Hugging Face embeddings
 Natural Language Queries - Ask questions about invoices, customers, expenses, or company policies
 Multi-Tool AI Agent - 6 specialized tools for querying business data and documents
+
 🔐 Security & Auth
+
 OpenID Connect Authentication - Secure login with Replit Auth
 Role-Based Access Control - Admin-managed user permissions
 Session Management - PostgreSQL-backed secure sessions
 Protected API Routes - Authentication middleware on all endpoints
+
 🎨 User Experience
+
 Modern Dark Mode UI - Linear/Stripe-inspired enterprise design
 Responsive Design - Works seamlessly on desktop and mobile
 Real-time Updates - Auto-refresh for background processing
 Export Capabilities - CSV/PDF export for all data modules (planned)
 Audit Reports - Comprehensive activity tracking and reporting (planned)
+
 🛠️ Tech Stack
+
 Frontend
 React 18 with TypeScript
 Wouter - Lightweight routing
@@ -56,7 +65,9 @@ Vite - Fast build tool and dev server
 Zod - Schema validation
 Date-fns - Date manipulation
 ESBuild - JavaScript bundler
+
 📦 Installation
+
 Prerequisites
 Node.js v20+
 PostgreSQL 14+
@@ -103,7 +114,9 @@ npm run dev
 Open in browser
 
 http://localhost:5000
+
 🎯 Usage
+
 AI Business Intelligence
 Ask natural language questions:
 
@@ -122,6 +135,8 @@ Create invoices with auto-generated IDs (INV-0001, INV-0002...)
 Apply tax rates from Settings
 Use quick notes templates
 Track payment status
+
+
 📁 Project Structure
 ├── client/                 # Frontend React application
 │   ├── src/
